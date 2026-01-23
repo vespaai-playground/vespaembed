@@ -1,0 +1,89 @@
+[project]
+name = "vespaembed"
+version = "0.0.1"
+description = "vespaembed: no-code training for embedding models"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache 2.0"}
+authors = [
+    {name = "Abhishek Thakur"}
+]
+dependencies = [
+    "pandas>=3.0.0",
+]
+
+[project.optional-dependencies]
+onnxruntime = ["onnxruntime>=1.23.2"]
+dev = [
+    "black==26.1.0",
+    "isort==7.0.0",
+    "flake8==7.3.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/vespaai-playground/vespaembed"
+
+[project.scripts]
+vespaembed = "vespaembed.cli.vespaembed:main"
+
+[build-system]
+requires = ["setuptools>=80.10.1"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+vespaembed = ["static/**/*", "templates/**/*"]
+
+[tool.black]
+line-length = 119
+target-version = ["py311"]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | \.env
+  | env
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+ensure_newline_before_comments = true
+force_grid_wrap = 0
+include_trailing_comma = true
+line_length = 119
+lines_after_imports = 2
+multi_line_output = 3
+use_parentheses = true
+
+[tool.flake8]
+ignore = ["E203", "E501", "W503"]
+max-line-length = 119
+per-file-ignores = { "__init__.py" = ["F401", "E402"] }
+exclude = [".git", ".venv", "__pycache__", "dist", "build"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+addopts = "-v --tb=short"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+]
