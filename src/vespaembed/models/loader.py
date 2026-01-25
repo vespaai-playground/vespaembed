@@ -20,8 +20,6 @@ def load_model(model_name_or_path: str, use_unsloth: bool = False) -> SentenceTr
                 for_inference=True,
             )
         except ImportError:
-            raise ImportError(
-                "Unsloth not installed. Install with: pip install vespaembed[unsloth]"
-            )
+            raise ImportError("Unsloth not installed. Install with: pip install vespaembed[unsloth]")
 
     return SentenceTransformer(model_name_or_path)

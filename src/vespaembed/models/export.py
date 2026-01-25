@@ -41,11 +41,9 @@ def _export_onnx(model: SentenceTransformer, output_path: Path) -> str:
         Path to ONNX model
     """
     try:
-        import onnx
+        import onnx  # noqa: F401
     except ImportError:
-        raise ImportError(
-            "ONNX not installed. Install with: pip install vespaembed[onnx]"
-        )
+        raise ImportError("ONNX not installed. Install with: pip install vespaembed[onnx]")
 
     output_path.mkdir(parents=True, exist_ok=True)
     onnx_path = output_path / "model.onnx"

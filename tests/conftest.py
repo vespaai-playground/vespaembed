@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 def client():
     """Create a test client for the FastAPI app."""
     from vespaembed.web.app import app
+
     return TestClient(app)
 
 
@@ -61,9 +62,7 @@ def sample_sts_csv(temp_dir):
     """Create a sample STS CSV file for testing."""
     csv_path = temp_dir / "sts.csv"
     csv_path.write_text(
-        "sentence1,sentence2,score\n"
-        "A man plays guitar,A person plays music,0.85\n"
-        "A dog runs,A cat sleeps,0.1\n"
+        "sentence1,sentence2,score\n" "A man plays guitar,A person plays music,0.85\n" "A dog runs,A cat sleeps,0.1\n"
     )
     return csv_path
 

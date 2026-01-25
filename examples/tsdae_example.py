@@ -42,13 +42,8 @@ vespaembed train \\
 # Python API Example
 # =============================================================================
 
-from vespaembed.core.config import (
-    DataConfig,
-    OutputConfig,
-    TrainingConfig,
-    TrainingHyperparameters,
-)
-from vespaembed.core.trainer import VespaEmbedTrainer
+from vespaembed.core.config import DataConfig, OutputConfig, TrainingConfig, TrainingHyperparameters  # noqa: E402
+from vespaembed.core.trainer import VespaEmbedTrainer  # noqa: E402
 
 
 def train_tsdae_basic():

@@ -1,10 +1,8 @@
 import logging
-import sys
 
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.theme import Theme
-
 
 # Custom theme matching vespatune
 VESPAEMBED_THEME = Theme(

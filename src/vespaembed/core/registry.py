@@ -1,5 +1,4 @@
-from typing import TYPE_CHECKING, Any, Type
-
+from typing import TYPE_CHECKING, Type
 
 if TYPE_CHECKING:
     from vespaembed.tasks.base import BaseTask
@@ -35,12 +34,26 @@ TASK_SPECIFIC_PARAMS = {
 # Sample data for each task
 TASK_SAMPLE_DATA = {
     "mnr": [
-        {"anchor": "What is machine learning?", "positive": "Machine learning is a subset of AI that enables systems to learn from data."},
-        {"anchor": "How does photosynthesis work?", "positive": "Photosynthesis converts sunlight into chemical energy in plants."},
+        {
+            "anchor": "What is machine learning?",
+            "positive": "Machine learning is a subset of AI that enables systems to learn from data.",
+        },
+        {
+            "anchor": "How does photosynthesis work?",
+            "positive": "Photosynthesis converts sunlight into chemical energy in plants.",
+        },
     ],
     "triplet": [
-        {"anchor": "What is Python?", "positive": "Python is a programming language", "negative": "A python is a large snake"},
-        {"anchor": "Apple stock price", "positive": "AAPL is trading at $150", "negative": "Apples are a healthy fruit"},
+        {
+            "anchor": "What is Python?",
+            "positive": "Python is a programming language",
+            "negative": "A python is a large snake",
+        },
+        {
+            "anchor": "Apple stock price",
+            "positive": "AAPL is trading at $150",
+            "negative": "Apples are a healthy fruit",
+        },
     ],
     "contrastive": [
         {"sentence1": "The cat sat on the mat", "sentence2": "A feline rested on the rug", "label": 1},
@@ -125,10 +138,7 @@ class Registry:
                 raise ValueError(f"Unknown task: '{name}'. Available tasks: {available}")
             return cls._build_task_info(name, cls._tasks[name])
 
-        return [
-            cls._build_task_info(task_name, task_cls)
-            for task_name, task_cls in sorted(cls._tasks.items())
-        ]
+        return [cls._build_task_info(task_name, task_cls) for task_name, task_cls in sorted(cls._tasks.items())]
 
     @classmethod
     def _build_task_info(cls, name: str, task_cls: Type["BaseTask"]) -> dict:

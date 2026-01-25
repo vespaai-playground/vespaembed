@@ -1,13 +1,11 @@
 import json
-import os
 import shutil
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from vespaembed.enums import RunStatus
-
 
 # Default database location
 DEFAULT_DB_DIR = Path.home() / ".vespaembed"
@@ -32,8 +30,7 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS runs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             status TEXT NOT NULL DEFAULT 'pending',
@@ -45,8 +42,7 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             error_message TEXT
         )
-    """
-    )
+    """)
 
     conn.commit()
     conn.close()

@@ -3,13 +3,12 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Optional
 
+# Import tasks to register them
+import vespaembed.tasks  # noqa: F401
 from vespaembed.cli import BaseCommand
 from vespaembed.core.config import TrainingConfig, load_config_from_yaml
 from vespaembed.core.trainer import VespaEmbedTrainer
 from vespaembed.utils.logging import logger
-
-# Import tasks to register them
-import vespaembed.tasks  # noqa: F401
 
 # Projects directory
 PROJECTS_DIR = Path.home() / ".vespaembed" / "projects"
@@ -158,7 +157,8 @@ class TrainCommand(BaseCommand):
         """Generate a random project name."""
         import random
         import string
-        return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+
+        return "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
     def _resolve_output_dir(self, project_name: str) -> Path:
         """Resolve output directory from project name."""

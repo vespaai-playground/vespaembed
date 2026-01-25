@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from datasets import Dataset
 
@@ -43,10 +43,7 @@ def load_dataset(
         elif suffix in (".jsonl", ".json"):
             return load_jsonl(path)
         else:
-            raise ValueError(
-                f"Unsupported file format: {suffix}. "
-                "Supported formats: .csv, .jsonl"
-            )
+            raise ValueError(f"Unsupported file format: {suffix}. " "Supported formats: .csv, .jsonl")
 
     # Check if it looks like a HuggingFace dataset
     if "/" in path or not path_obj.suffix:
@@ -54,8 +51,7 @@ def load_dataset(
 
     # File doesn't exist and doesn't look like HF dataset
     raise FileNotFoundError(
-        f"File not found: {path}. "
-        "Provide a valid file path or HuggingFace dataset name (e.g., 'org/dataset-name')."
+        f"File not found: {path}. " "Provide a valid file path or HuggingFace dataset name (e.g., 'org/dataset-name')."
     )
 
 

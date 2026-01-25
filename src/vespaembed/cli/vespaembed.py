@@ -1,11 +1,10 @@
 import argparse
-import sys
 
-from vespaembed.cli.commands.evaluate import EvaluateCommand, evaluate_command_factory
-from vespaembed.cli.commands.export import ExportCommand, export_command_factory
-from vespaembed.cli.commands.info import InfoCommand, info_command_factory
-from vespaembed.cli.commands.serve import ServeCommand, serve_command_factory
-from vespaembed.cli.commands.train import TrainCommand, train_command_factory
+from vespaembed.cli.commands.evaluate import EvaluateCommand
+from vespaembed.cli.commands.export import ExportCommand
+from vespaembed.cli.commands.info import InfoCommand
+from vespaembed.cli.commands.serve import ServeCommand
+from vespaembed.cli.commands.train import TrainCommand
 
 
 def main():

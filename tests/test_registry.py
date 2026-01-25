@@ -4,12 +4,7 @@ import pytest
 
 # Import tasks to register them
 import vespaembed.tasks  # noqa: F401
-from vespaembed.core.registry import (
-    DEFAULT_HYPERPARAMETERS,
-    TASK_SAMPLE_DATA,
-    TASK_SPECIFIC_PARAMS,
-    Registry,
-)
+from vespaembed.core.registry import DEFAULT_HYPERPARAMETERS, TASK_SAMPLE_DATA, TASK_SPECIFIC_PARAMS, Registry
 
 
 class TestRegistry:

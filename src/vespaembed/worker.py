@@ -7,19 +7,13 @@ import sys
 import traceback
 from pathlib import Path
 
-from vespaembed.core.config import (
-    DataConfig,
-    OutputConfig,
-    TrainingConfig,
-    TrainingHyperparameters,
-)
+# Import tasks to register them
+import vespaembed.tasks  # noqa: F401
+from vespaembed.core.config import DataConfig, OutputConfig, TrainingConfig, TrainingHyperparameters
 from vespaembed.core.trainer import VespaEmbedTrainer
 from vespaembed.db import update_run_status
 from vespaembed.enums import RunStatus
 from vespaembed.utils.logging import logger
-
-# Import tasks to register them
-import vespaembed.tasks  # noqa: F401
 
 
 class TrainingWorker:

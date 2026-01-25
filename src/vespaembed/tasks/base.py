@@ -54,8 +54,7 @@ class BaseTask(ABC):
         if missing:
             available = ", ".join(sorted(dataset.column_names))
             raise ValueError(
-                f"Missing required columns for task '{self.name}': {missing}. "
-                f"Available columns: {available}"
+                f"Missing required columns for task '{self.name}': {missing}. " f"Available columns: {available}"
             )
 
         # 3. Select and reorder columns

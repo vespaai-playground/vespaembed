@@ -14,16 +14,8 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, field_validator
 from starlette.requests import Request
 
-from vespaembed.db import (
-    create_run,
-    delete_run,
-    get_active_run,
-    get_all_runs,
-    get_run,
-    update_run_status,
-)
+from vespaembed.db import create_run, delete_run, get_active_run, get_all_runs, get_run, update_run_status
 from vespaembed.enums import RunStatus
-
 
 # Paths
 PACKAGE_DIR = Path(__file__).parent.parent
@@ -57,7 +49,9 @@ class TrainRequest(BaseModel):
     eval_filename: Optional[str] = Field(None, description="Path to uploaded evaluation file (optional)")
 
     # HuggingFace dataset (alternative to file upload)
-    hf_dataset: Optional[str] = Field(None, description="HuggingFace dataset name (e.g., 'sentence-transformers/all-nli')")
+    hf_dataset: Optional[str] = Field(
+        None, description="HuggingFace dataset name (e.g., 'sentence-transformers/all-nli')"
+    )
     hf_subset: Optional[str] = Field(None, description="Dataset subset/config name")
     hf_train_split: str = Field("train", description="Training split name")
     hf_eval_split: Optional[str] = Field(None, description="Evaluation split name (optional)")
@@ -89,13 +83,17 @@ class TrainRequest(BaseModel):
     hub_model_id: Optional[str] = None
 
     # Task-specific parameters
-    matryoshka_dims: Optional[str] = Field(None, description="Matryoshka dimensions as comma-separated string (e.g., '768,512,256,128')")
+    matryoshka_dims: Optional[str] = Field(
+        None, description="Matryoshka dimensions as comma-separated string (e.g., '768,512,256,128')"
+    )
 
     @field_validator("project_name")
     @classmethod
     def validate_project_name(cls, v):
         if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9-]*$", v):
-            raise ValueError("Project name must start with alphanumeric and contain only alphanumeric characters and hyphens")
+            raise ValueError(
+                "Project name must start with alphanumeric and contain only alphanumeric characters and hyphens"
+            )
         return v
 
 

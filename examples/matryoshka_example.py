@@ -54,13 +54,8 @@ vespaembed train \\
 # Python API Example
 # =============================================================================
 
-from vespaembed.core.config import (
-    DataConfig,
-    OutputConfig,
-    TrainingConfig,
-    TrainingHyperparameters,
-)
-from vespaembed.core.trainer import VespaEmbedTrainer
+from vespaembed.core.config import DataConfig, OutputConfig, TrainingConfig, TrainingHyperparameters  # noqa: E402
+from vespaembed.core.trainer import VespaEmbedTrainer  # noqa: E402
 
 
 def train_matryoshka_basic():
@@ -150,9 +145,8 @@ def train_matryoshka_huggingface():
 
 def evaluate_matryoshka_model():
     """Example of using Matryoshka embeddings at different dimensions."""
-    from sentence_transformers import SentenceTransformer
-    from sentence_transformers.util import cos_sim
     import numpy as np
+    from sentence_transformers import SentenceTransformer
 
     model = SentenceTransformer("./output/matryoshka-model/final")
 

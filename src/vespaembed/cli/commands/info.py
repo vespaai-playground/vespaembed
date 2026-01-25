@@ -1,11 +1,10 @@
 from argparse import ArgumentParser, Namespace
 
+# Import tasks to register them
+import vespaembed.tasks  # noqa: F401
 from vespaembed.cli import BaseCommand
 from vespaembed.core.registry import Registry
 from vespaembed.utils.logging import logger
-
-# Import tasks to register them
-import vespaembed.tasks  # noqa: F401
 
 
 def info_command_factory(args: Namespace) -> "InfoCommand":

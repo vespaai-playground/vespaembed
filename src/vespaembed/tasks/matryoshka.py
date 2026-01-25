@@ -1,9 +1,7 @@
-from typing import Any
-
 from datasets import Dataset
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.evaluation import InformationRetrievalEvaluator, SequentialEvaluator
-from sentence_transformers.losses import MatryoshkaLoss, MultipleNegativesRankingLoss
+from sentence_transformers.losses import MatryoshkaLoss
 from sentence_transformers.training_args import BatchSamplers
 
 from vespaembed.core.registry import Registry

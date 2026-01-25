@@ -53,11 +53,13 @@ class NLITask(BaseTask):
         # Check if labels need conversion
         sample_label = dataset["label"][0]
         if isinstance(sample_label, str):
-            new_features = Features({
-                "sentence1": dataset.features["sentence1"],
-                "sentence2": dataset.features["sentence2"],
-                "label": Value("int64"),
-            })
+            new_features = Features(
+                {
+                    "sentence1": dataset.features["sentence1"],
+                    "sentence2": dataset.features["sentence2"],
+                    "label": Value("int64"),
+                }
+            )
             dataset = dataset.map(
                 lambda x: {"label": label_map.get(x["label"].lower(), int(x["label"]))},
                 features=new_features,
@@ -84,6 +86,6 @@ class NLITask(BaseTask):
             sentences1=eval_dataset["sentence1"],
             sentences2=eval_dataset["sentence2"],
             # Use label as similarity proxy (entailment=1.0, neutral=0.5, contradiction=0.0)
-            scores=[1.0 if l == 0 else (0.5 if l == 1 else 0.0) for l in eval_dataset["label"]],
+            scores=[1.0 if label == 0 else (0.5 if label == 1 else 0.0) for label in eval_dataset["label"]],
             name="nli-eval",
         )

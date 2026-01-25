@@ -11,7 +11,6 @@ from vespaembed.core.registry import Registry
 from vespaembed.datasets.loader import load_dataset
 from vespaembed.utils.logging import logger
 
-
 # Get HuggingFace token from environment
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
@@ -65,9 +64,7 @@ class VespaEmbedTrainer:
                     token=HF_TOKEN,
                 )
             except ImportError:
-                raise ImportError(
-                    "Unsloth not installed. Install with: pip install vespaembed[unsloth]"
-                )
+                raise ImportError("Unsloth not installed. Install with: pip install vespaembed[unsloth]")
         else:
             logger.info(f"Loading model: {self.config.base_model}")
             return SentenceTransformer(self.config.base_model, token=HF_TOKEN)

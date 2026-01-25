@@ -1,7 +1,5 @@
 """Tests for the CLI commands."""
 
-import pytest
-
 
 class TestCLIImports:
     """Test that CLI modules can be imported."""
@@ -9,35 +7,41 @@ class TestCLIImports:
     def test_import_main(self):
         """Test importing the main CLI module."""
         from vespaembed.cli.vespaembed import main
+
         assert main is not None
 
     def test_import_train_command(self):
         """Test importing the train command."""
         from vespaembed.cli.commands.train import TrainCommand, train_command_factory
+
         assert TrainCommand is not None
         assert train_command_factory is not None
 
     def test_import_serve_command(self):
         """Test importing the serve command."""
         from vespaembed.cli.commands.serve import ServeCommand, serve_command_factory
+
         assert ServeCommand is not None
         assert serve_command_factory is not None
 
     def test_import_evaluate_command(self):
         """Test importing the evaluate command."""
         from vespaembed.cli.commands.evaluate import EvaluateCommand, evaluate_command_factory
+
         assert EvaluateCommand is not None
         assert evaluate_command_factory is not None
 
     def test_import_export_command(self):
         """Test importing the export command."""
         from vespaembed.cli.commands.export import ExportCommand, export_command_factory
+
         assert ExportCommand is not None
         assert export_command_factory is not None
 
     def test_import_info_command(self):
         """Test importing the info command."""
         from vespaembed.cli.commands.info import InfoCommand, info_command_factory
+
         assert InfoCommand is not None
         assert info_command_factory is not None
 

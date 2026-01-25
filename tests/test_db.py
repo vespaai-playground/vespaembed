@@ -1,7 +1,6 @@
 """Tests for the database module."""
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -25,9 +24,7 @@ class TestDatabase:
         """Delete all runs with test project names."""
         conn = db.get_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            "DELETE FROM runs WHERE project_name LIKE 'test%' OR project_name LIKE 'project-%'"
-        )
+        cursor.execute("DELETE FROM runs WHERE project_name LIKE 'test%' OR project_name LIKE 'project-%'")
         conn.commit()
         conn.close()
 
@@ -109,9 +106,7 @@ class TestDatabase:
             output_dir="/output",
         )
 
-        db.update_run_status(
-            run_id, RunStatus.ERROR, error_message="Something went wrong"
-        )
+        db.update_run_status(run_id, RunStatus.ERROR, error_message="Something went wrong")
         run = db.get_run(run_id)
         assert run["status"] == RunStatus.ERROR.value
         assert run["error_message"] == "Something went wrong"
