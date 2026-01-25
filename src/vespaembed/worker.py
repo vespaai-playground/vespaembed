@@ -135,20 +135,60 @@ class TrainingWorker:
 
     def _progress_callback(self, progress: dict):
         """Callback for training progress updates."""
-        self._send_update("progress", progress)
-        self._send_update("log", {"message": self._format_progress(progress)})
+        progress_type = progress.get("type", "progress")
+
+        if progress_type == "train_start":
+            self._send_update("progress", progress)
+            self._send_update(
+                "log", {"message": f"Training started: {progress['total_steps']} steps, {progress['total_epochs']} epochs"}
+            )
+        elif progress_type == "train_end":
+            self._send_update("progress", progress)
+            elapsed = self._format_time(progress.get("elapsed_seconds", 0))
+            self._send_update("log", {"message": f"Training completed in {elapsed}"})
+        else:
+            self._send_update("progress", progress)
+            self._send_update("log", {"message": self._format_progress(progress)})
+
+    def _format_time(self, seconds: float) -> str:
+        """Format seconds into human readable time."""
+        if seconds < 60:
+            return f"{seconds:.0f}s"
+        elif seconds < 3600:
+            mins = int(seconds // 60)
+            secs = int(seconds % 60)
+            return f"{mins}m {secs}s"
+        else:
+            hours = int(seconds // 3600)
+            mins = int((seconds % 3600) // 60)
+            return f"{hours}h {mins}m"
 
     def _format_progress(self, progress: dict) -> str:
-        """Format progress as a log message."""
-        parts = []
-        if progress.get("epoch") is not None:
-            parts.append(f"Epoch: {progress['epoch']}")
-        if progress.get("step") is not None:
-            parts.append(f"Step: {progress['step']}")
-        if progress.get("loss") is not None:
-            parts.append(f"Loss: {progress['loss']:.4f}")
-        if progress.get("learning_rate") is not None:
-            parts.append(f"LR: {progress['learning_rate']:.2e}")
+        """Format progress as a log message like tqdm."""
+        step = progress.get("step", 0)
+        total = progress.get("total_steps", 0)
+        pct = progress.get("progress_pct", 0)
+        epoch = progress.get("epoch", 0)
+        total_epochs = progress.get("total_epochs", 0)
+        loss = progress.get("loss")
+        lr = progress.get("learning_rate")
+        eta = progress.get("eta_seconds", 0)
+
+        # Format: [Step 100/1000 (10%)] Epoch 1/3 | Loss: 0.5234 | LR: 2.00e-05 | ETA: 5m 30s
+        parts = [f"[Step {step}/{total} ({pct:.0f}%)]"]
+
+        if total_epochs:
+            parts.append(f"Epoch {epoch:.1f}/{total_epochs}")
+
+        if loss is not None:
+            parts.append(f"Loss: {loss:.4f}")
+
+        if lr is not None:
+            parts.append(f"LR: {lr:.2e}")
+
+        if eta > 0:
+            parts.append(f"ETA: {self._format_time(eta)}")
+
         return " | ".join(parts)
 
 

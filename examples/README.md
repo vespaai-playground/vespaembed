@@ -10,7 +10,7 @@ This folder contains examples for each training task supported by VespaEmbed.
 | `triplet` | Triplet training - learn from anchor/positive/negative triplets | `anchor`, `positive`, `negative` |
 | `contrastive` | Contrastive learning - pairs with binary similarity labels | `sentence1`, `sentence2`, `label` |
 | `sts` | Semantic Textual Similarity - pairs with continuous scores | `sentence1`, `sentence2`, `score` |
-| `nli` | Natural Language Inference - sentence pairs with entailment labels | `sentence1`, `sentence2`, `label` |
+| `nli` | Sentence pair classification with SoftmaxLoss | `sentence1`, `sentence2`, `label` |
 | `tsdae` | TSDAE - unsupervised domain adaptation with denoising auto-encoder | `text` |
 | `matryoshka` | Matryoshka embeddings - multi-dimensional representations | `anchor`, `positive` |
 
@@ -57,7 +57,7 @@ trainer.train()
 - `triplet_example.py` - Triplet Loss Training
 - `contrastive_example.py` - Contrastive Learning
 - `sts_example.py` - Semantic Textual Similarity
-- `nli_example.py` - Natural Language Inference
+- `nli_example.py` - Sentence Pair Classification (NLI)
 - `tsdae_example.py` - TSDAE Domain Adaptation
 - `matryoshka_example.py` - Matryoshka Embeddings
 
@@ -69,5 +69,5 @@ The `data/` folder contains sample CSV files for each task:
 - `data/triplet.csv` - Anchor-positive-negative triplets
 - `data/contrastive.csv` - Sentence pairs with binary labels
 - `data/sts.csv` - Sentence pairs with similarity scores
-- `data/nli.csv` - Sentence pairs with entailment labels (0=entailment, 1=neutral, 2=contradiction)
+- `data/nli.csv` - Sentence pairs with class labels (auto-detected)
 - `data/tsdae.csv` - Unlabeled text for domain adaptation

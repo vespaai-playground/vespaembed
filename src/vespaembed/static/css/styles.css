@@ -202,6 +202,15 @@ body {
     background: var(--danger);
 }
 
+.run-status-icon.stopped {
+    background: var(--low-contrast-text);
+}
+
+.run-status-icon.pending {
+    background: var(--warning);
+    opacity: 0.5;
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
@@ -283,6 +292,12 @@ body {
     background: var(--danger-dim);
 }
 
+.status-chip.stopped {
+    color: var(--low-contrast-text);
+    border-color: var(--subtle-border);
+    background: var(--subtle-background);
+}
+
 .summary-grid {
     background: var(--app-background);
     border-radius: var(--radius-sm);
@@ -335,12 +350,14 @@ body {
 .main {
     flex: 1;
     padding: var(--space-lg);
+    padding-bottom: 70px; /* Space for fixed progress bar */
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
-    overflow: hidden;
+    overflow-y: auto;
     min-height: 0;
     background: var(--subtle-background);
+    position: relative;
 }
 
 .monitor-header {
@@ -454,6 +471,90 @@ body {
     justify-content: center;
     color: var(--low-contrast-text);
     font-size: var(--font-sm);
+}
+
+/* Progress Bar */
+.progress-container {
+    position: fixed;
+    bottom: 0;
+    left: 260px; /* Sidebar width */
+    right: 0;
+    background: var(--app-background);
+    border-top: 1px solid var(--subtle-border);
+    padding: var(--space-sm) var(--space-lg);
+    z-index: 100;
+}
+
+.progress-bar {
+    height: 8px;
+    background: var(--ui-element-background);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: var(--space-xs);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--heather-light), var(--heather-dark));
+    border-radius: var(--radius-sm);
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-xs);
+    color: var(--low-contrast-text);
+    font-family: var(--mono);
+}
+
+/* Status Banner */
+.status-banner {
+    background: var(--ui-element-background);
+    border: 1px solid var(--subtle-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--high-contrast-text);
+    font-size: var(--font-sm);
+}
+
+.status-spinner,
+.btn-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--subtle-border);
+    border-top-color: var(--heather-light);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.btn-spinner {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
+    display: none;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.btn-danger .btn-spinner {
+    border-color: rgba(255,255,255,0.3);
+    border-top-color: white;
+}
+
+/* Button loading state */
+.btn-danger.loading .btn-text {
+    display: none;
+}
+
+.btn-danger.loading .btn-spinner {
+    display: inline-block !important;
 }
 
 /* Log Card */

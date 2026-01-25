@@ -17,6 +17,56 @@ from starlette.requests import Request
 from vespaembed.db import create_run, delete_run, get_active_run, get_all_runs, get_run, update_run_status
 from vespaembed.enums import RunStatus
 
+
+# Helper: Check if process is alive
+def is_process_alive(pid: int | None) -> bool:
+    """Check if a process with the given PID is still running."""
+    if pid is None:
+        return False
+    try:
+        os.kill(pid, 0)  # Signal 0 checks if process exists without killing it
+        return True
+    except (ProcessLookupError, OSError):
+        return False
+
+
+# Helper: Check if final model exists for a run
+def has_final_model(output_dir: str | None) -> bool:
+    """Check if training completed successfully by looking for final model."""
+    if not output_dir:
+        return False
+    final_path = Path(output_dir) / "final"
+    return final_path.exists() and final_path.is_dir()
+
+
+# Startup: Sync run statuses with actual process states
+def sync_run_statuses():
+    """Check all running/pending runs and update status if process is dead.
+
+    This handles cases where:
+    - Server was restarted while training was in progress
+    - Training process crashed unexpectedly
+    - Training completed but status wasn't updated
+    """
+    runs = get_all_runs()
+    for run in runs:
+        if run["status"] in [RunStatus.RUNNING.value, RunStatus.PENDING.value]:
+            pid = run.get("pid")
+            run_id = run["id"]
+
+            # Check if process is still alive
+            if is_process_alive(pid):
+                continue  # Still running, leave it
+
+            # Process is dead - determine final status
+            if has_final_model(run.get("output_dir")):
+                update_run_status(run_id, RunStatus.COMPLETED)
+                print(f"[sync] Run {run_id}: Marked as completed (final model exists)")
+            else:
+                update_run_status(run_id, RunStatus.ERROR, error_message="Process terminated unexpectedly")
+                print(f"[sync] Run {run_id}: Marked as error (no final model)")
+
+
 # Paths
 PACKAGE_DIR = Path(__file__).parent.parent
 STATIC_DIR = PACKAGE_DIR / "static"
@@ -37,6 +87,9 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # Templates
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+# Sync run statuses on startup
+sync_run_statuses()
 
 
 # Pydantic models

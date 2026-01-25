@@ -1,18 +1,25 @@
 """
-Natural Language Inference (NLI) Example
+Sentence Pair Classification (NLI) Example
 
-NLI training uses sentence pairs with entailment labels to learn embeddings
-that capture semantic relationships between sentences.
+Uses SoftmaxLoss to classify sentence pairs into categories.
+Common use cases include:
+- NLI (entailment/neutral/contradiction)
+- Paraphrase detection
+- Semantic similarity classification
+- Any multi-class sentence pair task
 
 Data format:
-- sentence1: The premise/first sentence
-- sentence2: The hypothesis/second sentence
-- label: Entailment label (0=entailment, 1=neutral, 2=contradiction)
+- sentence1: First sentence
+- sentence2: Second sentence
+- label: Class label (integer or string - auto-converted)
 
 Column aliases supported:
 - sentence1: premise, sent1, text1, anchor
 - sentence2: hypothesis, sent2, text2, positive
-- label: gold_label, class
+- label: gold_label, class, category
+
+Note: Labels can be strings (auto-converted) or integers.
+The number of classes is auto-detected from the data.
 """
 
 # =============================================================================
@@ -29,7 +36,7 @@ vespaembed train \\
     --epochs 3 \\
     --batch-size 32
 
-# Train with HuggingFace dataset
+# Train with HuggingFace dataset (classic NLI)
 vespaembed train \\
     --task nli \\
     --data sentence-transformers/all-nli \\
@@ -43,12 +50,17 @@ vespaembed train \\
 # Python API Example
 # =============================================================================
 
-from vespaembed.core.config import DataConfig, OutputConfig, TrainingConfig, TrainingHyperparameters  # noqa: E402
+from vespaembed.core.config import (  # noqa: E402
+    DataConfig,
+    OutputConfig,
+    TrainingConfig,
+    TrainingHyperparameters,
+)
 from vespaembed.core.trainer import VespaEmbedTrainer  # noqa: E402
 
 
 def train_nli_basic():
-    """Basic NLI training with minimal configuration."""
+    """Basic sentence pair classification training."""
     config = TrainingConfig(
         task="nli",
         base_model="sentence-transformers/all-MiniLM-L6-v2",
@@ -61,7 +73,7 @@ def train_nli_basic():
 
 
 def train_nli_huggingface():
-    """NLI training with HuggingFace dataset."""
+    """Training with HuggingFace NLI dataset."""
     config = TrainingConfig(
         task="nli",
         base_model="sentence-transformers/all-MiniLM-L6-v2",
@@ -85,6 +97,6 @@ def train_nli_huggingface():
 
 
 if __name__ == "__main__":
-    print("Training NLI model...")
+    print("Training sentence pair classification model...")
     train_nli_basic()
     print("Training complete!")

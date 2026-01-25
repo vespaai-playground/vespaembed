@@ -197,7 +197,7 @@ let pollingRunId = null; // The run ID we're currently polling for
 
 function startPolling(runId) {
     stopPolling();
-    pollLine = 0;
+    // pollLine is set by loadHistoricalUpdates, so don't reset it here
     pollingRunId = runId;
 
     pollInterval = setInterval(async () => {
@@ -583,6 +583,12 @@ async function handleTrainSubmit(e) {
         return;
     }
 
+    // Show loading state
+    const submitBtn = trainForm.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Starting...';
+
     try {
         const response = await fetch('/train', {
             method: 'POST',
@@ -595,9 +601,13 @@ async function handleTrainSubmit(e) {
             newTrainingModal.style.display = 'none';
             resetChart();
             clearLogs();
+
+            // Show status banner
+            showStatusBanner('Initializing training...');
+
             loadRuns();
+            // selectRun will load historical updates and start polling if active
             selectRun(data.run_id);
-            startPolling(data.run_id);
         } else {
             const error = await response.json();
             alert(`Training failed: ${error.detail || 'Unknown error'}`);
@@ -605,22 +615,45 @@ async function handleTrainSubmit(e) {
     } catch (error) {
         console.error('Training error:', error);
         alert('Failed to start training');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
     }
 }
 
 async function stopTraining() {
     if (!selectedRunId) return;
 
+    const stopBtn = document.getElementById('stop-btn');
+    stopBtn.classList.add('loading');
+    stopBtn.disabled = true;
+
     try {
-        await fetch('/stop', {
+        const response = await fetch('/stop', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ run_id: selectedRunId })
         });
-        stopPolling();
-        loadRuns();
+
+        if (response.ok) {
+            stopPolling();
+            // Hide stop button and status banner
+            stopBtn.style.display = 'none';
+            hideStatusBanner();
+            // Update status display
+            const statusEl = document.getElementById('summary-status');
+            statusEl.textContent = 'stopped';
+            statusEl.className = 'status-chip small stopped';
+            // Hide progress bar
+            document.getElementById('progress-container').style.display = 'none';
+            // Refresh run list to get updated status
+            await loadRuns();
+        }
     } catch (error) {
         console.error('Stop error:', error);
+    } finally {
+        stopBtn.classList.remove('loading');
+        stopBtn.disabled = false;
     }
 }
 
@@ -653,7 +686,9 @@ async function loadRuns() {
         activeRunId = activeData.run_id;
 
         // If there's an active run and we're not polling, start polling
+        // Reset pollLine since we haven't loaded historical updates yet
         if (activeRunId && !pollInterval) {
+            pollLine = 0;
             startPolling(activeRunId);
         }
     } catch (error) {
@@ -705,21 +740,57 @@ async function selectRun(runId) {
     document.getElementById('current-epoch').textContent = '0';
     document.getElementById('current-step').textContent = '0';
     document.getElementById('current-loss').textContent = '--';
+    document.getElementById('current-eta').textContent = '--';
+    document.getElementById('progress-container').style.display = 'none';
+    document.getElementById('progress-fill').style.width = '0%';
+    document.getElementById('progress-pct').textContent = '0%';
+    document.getElementById('progress-speed').textContent = '-- it/s';
+    document.getElementById('status-banner').style.display = 'none';
 
     try {
         const response = await fetch(`/runs/${runId}`);
         const run = await response.json();
         showRunSummary(run);
 
+        // Load historical updates (logs and progress) for this run
+        await loadHistoricalUpdates(runId);
+
         // Load metrics from TensorBoard files for this run
         await loadMetrics(runId);
 
-        // If this run is active and not already polling for it, start polling
-        if (run.status === 'running' && pollingRunId !== runId) {
-            startPolling(runId);
+        // If this run is active, show progress bar and start polling
+        if (run.status === 'running') {
+            document.getElementById('progress-container').style.display = 'block';
+            if (pollingRunId !== runId) {
+                startPolling(runId);
+            }
         }
     } catch (error) {
         console.error('Failed to load run:', error);
+    }
+}
+
+async function loadHistoricalUpdates(runId) {
+    try {
+        // Load all updates from the beginning (since_line=0)
+        const response = await fetch(`/runs/${runId}/updates?since_line=0`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        // Process historical updates, but skip status updates since we have
+        // the authoritative status from the API (status in update file may be stale)
+        data.updates.forEach(update => {
+            if (update.type !== 'status') {
+                handleUpdate(update);
+            }
+        });
+
+        // Set pollLine for future polling
+        pollLine = data.next_line;
+
+    } catch (error) {
+        console.error('Failed to load historical updates:', error);
     }
 }
 
@@ -765,12 +836,71 @@ function updateRunStatus(runId, status) {
 
 // Progress
 function updateProgress(data) {
-    document.getElementById('current-epoch').textContent = data.epoch?.toFixed(2) || 0;
-    document.getElementById('current-step').textContent = data.step || 0;
+    const progressType = data.type || 'progress';
+
+    if (progressType === 'train_start') {
+        // Hide status banner and show progress bar when training starts
+        hideStatusBanner();
+        document.getElementById('progress-container').style.display = 'block';
+        document.getElementById('progress-fill').style.width = '0%';
+        document.getElementById('progress-pct').textContent = '0%';
+        document.getElementById('progress-speed').textContent = '-- it/s';
+        return;
+    }
+
+    if (progressType === 'train_end') {
+        // Training complete - fill bar to 100%
+        document.getElementById('progress-fill').style.width = '100%';
+        document.getElementById('progress-pct').textContent = '100%';
+        document.getElementById('progress-speed').textContent = 'Complete';
+        document.getElementById('current-eta').textContent = 'Done';
+        return;
+    }
+
+    // Update metrics display
+    const totalEpochs = data.total_epochs || 0;
+    const epochDisplay = totalEpochs ? `${data.epoch?.toFixed(1) || 0}/${totalEpochs}` : (data.epoch?.toFixed(2) || 0);
+    document.getElementById('current-epoch').textContent = epochDisplay;
+
+    const totalSteps = data.total_steps || 0;
+    const stepDisplay = totalSteps ? `${data.step || 0}/${totalSteps}` : (data.step || 0);
+    document.getElementById('current-step').textContent = stepDisplay;
+
     document.getElementById('current-loss').textContent = data.loss?.toFixed(4) || '--';
+
+    // Update ETA
+    if (data.eta_seconds && data.eta_seconds > 0) {
+        document.getElementById('current-eta').textContent = formatTime(data.eta_seconds);
+    }
+
+    // Update progress bar
+    if (data.progress_pct !== undefined) {
+        document.getElementById('progress-container').style.display = 'block';
+        document.getElementById('progress-fill').style.width = `${data.progress_pct}%`;
+        document.getElementById('progress-pct').textContent = `${data.progress_pct.toFixed(1)}%`;
+    }
+
+    // Update speed
+    if (data.steps_per_sec) {
+        document.getElementById('progress-speed').textContent = `${data.steps_per_sec.toFixed(2)} it/s`;
+    }
 
     if (data.step && data.loss) {
         updateChart(data.step, data.loss);
+    }
+}
+
+function formatTime(seconds) {
+    if (seconds < 60) {
+        return `${Math.round(seconds)}s`;
+    } else if (seconds < 3600) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.round(seconds % 60);
+        return `${mins}m ${secs}s`;
+    } else {
+        const hours = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        return `${hours}h ${mins}m`;
     }
 }
 
@@ -789,15 +919,40 @@ function clearLogs() {
     document.getElementById('log-count').textContent = '0';
 }
 
+// Status Banner
+function showStatusBanner(message) {
+    const banner = document.getElementById('status-banner');
+    document.getElementById('status-message').textContent = message;
+    banner.style.display = 'flex';
+}
+
+function hideStatusBanner() {
+    document.getElementById('status-banner').style.display = 'none';
+}
+
 // Handlers
 function handleTrainingComplete(data) {
     appendLog(`Training completed! Model saved to: ${data.output_dir}`);
+    hideStatusBanner();
+    // Hide stop button and update status
+    document.getElementById('stop-btn').style.display = 'none';
+    document.getElementById('progress-container').style.display = 'none';
+    const statusEl = document.getElementById('summary-status');
+    statusEl.textContent = 'completed';
+    statusEl.className = 'status-chip small completed';
     stopPolling();
     loadRuns();
 }
 
 function handleTrainingError(data) {
     appendLog(`Error: ${data.message}`);
+    hideStatusBanner();
+    // Hide stop button and update status
+    document.getElementById('stop-btn').style.display = 'none';
+    document.getElementById('progress-container').style.display = 'none';
+    const statusEl = document.getElementById('summary-status');
+    statusEl.textContent = 'error';
+    statusEl.className = 'status-chip small error';
     stopPolling();
     loadRuns();
 }

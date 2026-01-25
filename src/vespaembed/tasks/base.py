@@ -20,6 +20,42 @@ class BaseTask(ABC):
     # Batch sampler (NO_DUPLICATES for in-batch negative losses)
     batch_sampler: BatchSamplers = BatchSamplers.BATCH_SAMPLER
 
+    def __init__(self):
+        # Label encoding mappings (set by prepare_dataset if task has labels)
+        self._label_to_idx: dict[str, int] | None = None
+        self._idx_to_label: dict[int, str] | None = None
+
+    @property
+    def label_to_idx(self) -> dict[str, int] | None:
+        """Return label to index mapping, or None if task has no labels."""
+        return self._label_to_idx
+
+    @property
+    def idx_to_label(self) -> dict[int, str] | None:
+        """Return index to label mapping, or None if task has no labels."""
+        return self._idx_to_label
+
+    @property
+    def num_labels(self) -> int | None:
+        """Return number of labels, or None if task has no labels."""
+        if self._label_to_idx is None:
+            return None
+        return len(self._label_to_idx)
+
+    def get_label_config(self) -> dict | None:
+        """Return label configuration in HuggingFace format.
+
+        Returns:
+            Dict with id2label, label2id, and num_labels, or None if no labels
+        """
+        if self._label_to_idx is None:
+            return None
+        return {
+            "id2label": {str(k): v for k, v in self._idx_to_label.items()},
+            "label2id": self._label_to_idx,
+            "num_labels": len(self._label_to_idx),
+        }
+
     @abstractmethod
     def get_loss(self, model: SentenceTransformer, **kwargs) -> Any:
         """Return configured loss function from sentence-transformers.

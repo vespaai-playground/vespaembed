@@ -275,3 +275,112 @@ class TestMatryoshkaTask:
         task_cls = Registry.get_task("matryoshka")
         task = task_cls(matryoshka_dims=[512, 256, 128])
         assert task.matryoshka_dims == [512, 256, 128]
+
+
+class TestLabelEncoding:
+    """Test label encoding for classification tasks."""
+
+    def test_nli_string_label_encoding(self):
+        """Test NLI task encodes string labels to integers."""
+        from datasets import Dataset
+
+        task = Registry.get_task("nli")()
+
+        # Create dataset with string labels
+        dataset = Dataset.from_dict(
+            {
+                "sentence1": ["A man is eating", "A woman is running"],
+                "sentence2": ["A person is eating food", "A person is exercising"],
+                "label": ["entailment", "neutral"],
+            }
+        )
+
+        prepared = task.prepare_dataset(dataset)
+
+        # Check labels are integers
+        assert all(isinstance(l, int) for l in prepared["label"])
+
+        # Check mappings were created
+        assert task.label_to_idx is not None
+        assert task.idx_to_label is not None
+        assert task.num_labels == 2
+        assert task.label_to_idx["entailment"] == 0
+        assert task.label_to_idx["neutral"] == 1
+        assert task.idx_to_label[0] == "entailment"
+        assert task.idx_to_label[1] == "neutral"
+
+    def test_nli_integer_label_encoding(self):
+        """Test NLI task handles integer labels correctly."""
+        from datasets import Dataset
+
+        task = Registry.get_task("nli")()
+
+        # Create dataset with integer labels
+        dataset = Dataset.from_dict(
+            {
+                "sentence1": ["A man is eating", "A woman is running"],
+                "sentence2": ["A person is eating food", "A person is exercising"],
+                "label": [0, 2],
+            }
+        )
+
+        prepared = task.prepare_dataset(dataset)
+
+        # Check mappings were created
+        assert task.label_to_idx is not None
+        assert task.num_labels == 2
+
+    def test_contrastive_label_encoding(self):
+        """Test contrastive task creates default label mappings."""
+        from datasets import Dataset
+
+        task = Registry.get_task("contrastive")()
+
+        # Create dataset with integer labels
+        dataset = Dataset.from_dict(
+            {
+                "sentence1": ["A cat", "A dog"],
+                "sentence2": ["A feline", "A canine"],
+                "label": [1, 0],
+            }
+        )
+
+        prepared = task.prepare_dataset(dataset)
+
+        # Check default binary mappings
+        assert task.label_to_idx == {"dissimilar": 0, "similar": 1}
+        assert task.idx_to_label == {0: "dissimilar", 1: "similar"}
+
+    def test_label_config_output(self):
+        """Test get_label_config returns HuggingFace format."""
+        from datasets import Dataset
+
+        task = Registry.get_task("nli")()
+
+        dataset = Dataset.from_dict(
+            {
+                "sentence1": ["A", "B", "C"],
+                "sentence2": ["D", "E", "F"],
+                "label": ["positive", "negative", "neutral"],
+            }
+        )
+
+        task.prepare_dataset(dataset)
+        config = task.get_label_config()
+
+        assert config is not None
+        assert "id2label" in config
+        assert "label2id" in config
+        assert "num_labels" in config
+        assert config["num_labels"] == 3
+        # HuggingFace format: id2label has string keys
+        assert config["id2label"]["0"] == "negative"
+        assert config["label2id"]["negative"] == 0
+
+    def test_task_without_labels_returns_none(self):
+        """Test tasks without labels return None for label config."""
+        task = Registry.get_task("mnr")()
+        assert task.label_to_idx is None
+        assert task.idx_to_label is None
+        assert task.num_labels is None
+        assert task.get_label_config() is None

@@ -54,7 +54,10 @@
                     </div>
                 </div>
                 <div class="summary-actions">
-                    <button type="button" id="stop-btn" class="btn-danger" style="display: none;">Stop</button>
+                    <button type="button" id="stop-btn" class="btn-danger" style="display: none;">
+                        <span class="btn-text">Stop</span>
+                        <span class="btn-spinner"></span>
+                    </button>
                     <button type="button" id="delete-btn" class="btn-ghost">Delete</button>
                 </div>
             </div>
@@ -86,7 +89,17 @@
                         <span class="metric-val" id="current-loss">--</span>
                         <span class="metric-label">loss</span>
                     </div>
+                    <div class="metric">
+                        <span class="metric-val" id="current-eta">--</span>
+                        <span class="metric-label">ETA</span>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Status Banner -->
+            <div class="status-banner" id="status-banner" style="display: none;">
+                <span class="status-spinner"></span>
+                <span class="status-message" id="status-message">Loading...</span>
             </div>
 
             <!-- Chart -->
@@ -115,6 +128,17 @@
                 </div>
                 <div class="log-content" id="log-content">
                     Logs will appear here...
+                </div>
+            </div>
+
+            <!-- Progress Bar (Bottom) -->
+            <div class="progress-container" id="progress-container" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="progress-text">
+                    <span id="progress-pct">0%</span>
+                    <span id="progress-speed">-- it/s</span>
                 </div>
             </div>
         </main>
