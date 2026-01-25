@@ -140,7 +140,8 @@ class TrainingWorker:
         if progress_type == "train_start":
             self._send_update("progress", progress)
             self._send_update(
-                "log", {"message": f"Training started: {progress['total_steps']} steps, {progress['total_epochs']} epochs"}
+                "log",
+                {"message": f"Training started: {progress['total_steps']} steps, {progress['total_epochs']} epochs"},
             )
         elif progress_type == "train_end":
             self._send_update("progress", progress)

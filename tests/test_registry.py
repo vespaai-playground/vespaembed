@@ -298,7 +298,7 @@ class TestLabelEncoding:
         prepared = task.prepare_dataset(dataset)
 
         # Check labels are integers
-        assert all(isinstance(l, int) for l in prepared["label"])
+        assert all(isinstance(label, int) for label in prepared["label"])
 
         # Check mappings were created
         assert task.label_to_idx is not None
@@ -324,7 +324,7 @@ class TestLabelEncoding:
             }
         )
 
-        prepared = task.prepare_dataset(dataset)
+        task.prepare_dataset(dataset)
 
         # Check mappings were created
         assert task.label_to_idx is not None
@@ -345,7 +345,7 @@ class TestLabelEncoding:
             }
         )
 
-        prepared = task.prepare_dataset(dataset)
+        task.prepare_dataset(dataset)
 
         # Check default binary mappings
         assert task.label_to_idx == {"dissimilar": 0, "similar": 1}
