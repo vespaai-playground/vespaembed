@@ -1,0 +1,1 @@
+"""VespaEmbed test suite."""

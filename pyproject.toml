@@ -9,11 +9,26 @@ authors = [
     {name = "Abhishek Thakur"}
 ]
 dependencies = [
-    "pandas>=3.0.0",
+    "sentence-transformers>=3.0.0",
+    "transformers>=4.40.0",
+    "accelerate>=0.26.0",
+    "torch>=2.0.0",
+    "datasets>=2.18.0",
+    "pandas>=2.0.0",
+    "pydantic>=2.0.0",
+    "rich>=13.0.0",
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
+    "python-multipart>=0.0.9",
+    "websockets>=12.0",
+    "jinja2>=3.1.0",
+    "pyyaml>=6.0.0",
+    "tensorboard>=2.15.0",
 ]
 
 [project.optional-dependencies]
-onnxruntime = ["onnxruntime>=1.23.2"]
+unsloth = ["unsloth"]
+onnx = ["onnx>=1.14.0", "onnxruntime>=1.23.2"]
 dev = [
     "black==26.1.0",
     "isort==7.0.0",

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VespaEmbed</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <span class="brand-icon">◈</span>
+                <span class="brand-text">VespaEmbed</span>
+            </div>
+            <button id="new-training-btn" class="btn-new">+ New Project</button>
+            <div class="run-list" id="run-list">
+                <div class="run-item placeholder">No training runs yet</div>
+            </div>
+
+            <!-- Project Summary (shown when run selected) -->
+            <div id="project-summary" class="project-summary" style="display: none;">
+                <div class="summary-header">
+                    <span class="summary-title" id="summary-project-name">Training</span>
+                    <span class="status-chip small" id="summary-status">Ready</span>
+                </div>
+                <div class="summary-grid">
+                    <div class="summary-row">
+                        <span class="summary-key">Task</span>
+                        <span class="summary-val" id="sum-task">--</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-key">Model</span>
+                        <span class="summary-val" id="sum-model">--</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-key">Data</span>
+                        <span class="summary-val" id="sum-data">--</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-key">Epochs</span>
+                        <span class="summary-val" id="sum-epochs">--</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-key">Batch Size</span>
+                        <span class="summary-val" id="sum-batch">--</span>
+                    </div>
+                </div>
+                <div class="summary-actions">
+                    <button type="button" id="stop-btn" class="btn-danger" style="display: none;">Stop</button>
+                    <button type="button" id="delete-btn" class="btn-ghost">Delete</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Top Bar: Status + Metrics -->
+            <div class="monitor-header">
+                <div class="header-actions">
+                    <button id="refresh-btn" class="icon-btn" title="Refresh">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6" />
+                            <path d="M1 20v-6h6" />
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="metrics-bar">
+                    <div class="metric">
+                        <span class="metric-val" id="current-epoch">0</span>
+                        <span class="metric-label">epoch</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-val" id="current-step">0</span>
+                        <span class="metric-label">steps</span>
+                    </div>
+                    <div class="metric highlight">
+                        <span class="metric-val" id="current-loss">--</span>
+                        <span class="metric-label">loss</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <span>Training Progress</span>
+                    <div class="chart-controls">
+                        <select id="metric-select" class="metric-select">
+                            <option value="loss">Loss</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="loss-chart"></canvas>
+                    <div class="chart-placeholder" id="chart-placeholder">
+                        Start training to see progress
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs -->
+            <div class="log-card">
+                <div class="card-header">
+                    Training Logs
+                    <span class="badge" id="log-count">0</span>
+                </div>
+                <div class="log-content" id="log-content">
+                    Logs will appear here...
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- New Training Modal (Two Column Layout) -->
+    <div id="new-training-modal" class="modal">
+        <div class="modal-box modal-wide">
+            <div class="modal-header">
+                <span>New Project</span>
+                <button class="close-modal" id="close-new-training">&times;</button>
+            </div>
+            <form id="train-form">
+                <div class="modal-two-column">
+                    <!-- Left Column: Project & Data -->
+                    <div class="modal-column">
+                        <div class="column-header">Project & Data</div>
+
+                        <!-- Project Name -->
+                        <div class="form-section">
+                            <label class="section-label">Project Name</label>
+                            <input type="text" id="project_name" name="project_name" required
+                                   pattern="[a-zA-Z0-9][a-zA-Z0-9-]*">
+                            <span class="field-hint">Saved to ~/.vespaembed/projects/</span>
+                        </div>
+
+                        <!-- Task & Model -->
+                        <div class="form-section">
+                            <label class="section-label">Task & Model</label>
+                            <div class="form-field">
+                                <label>Task</label>
+                                <select id="task" name="task" required>
+                                    <!-- Options populated via API -->
+                                </select>
+                                <span class="field-hint" id="task-description"></span>
+                            </div>
+                            <!-- Sample data format -->
+                            <div class="sample-data-box" id="sample-data-box">
+                                <div class="sample-data-header">Expected data format:</div>
+                                <div class="sample-data-content" id="sample-data-content"></div>
+                            </div>
+                            <div class="form-field" style="margin-top: var(--space-sm);">
+                                <label>Base Model</label>
+                                <input type="text" id="base_model" name="base_model"
+                                       value="sentence-transformers/all-MiniLM-L6-v2" required>
+                            </div>
+                        </div>
+
+                        <!-- Data Source Tabs -->
+                        <div class="form-section">
+                            <label class="section-label">Data Source</label>
+                            <div class="tabs">
+                                <button type="button" class="tab active" data-tab="file">File Upload</button>
+                                <button type="button" class="tab" data-tab="huggingface">HuggingFace Dataset</button>
+                            </div>
+
+                            <!-- Tab content container -->
+                            <div class="tab-container">
+                                <!-- File Upload Tab -->
+                                <div class="tab-content active" id="tab-file">
+                                    <div class="upload-grid">
+                                        <!-- Training Data -->
+                                        <div class="upload-section">
+                                            <label class="upload-label">Training Data <span class="required">*</span></label>
+                                            <div class="upload-box" id="train-upload">
+                                                <input type="file" id="train_file" accept=".csv,.jsonl" hidden>
+                                                <span class="upload-icon">↑</span>
+                                                <span class="upload-text" id="train_file_info">CSV or JSONL</span>
+                                            </div>
+                                            <input type="hidden" id="train_filename" name="train_filename">
+                                        </div>
+
+                                        <!-- Evaluation Data (Optional) -->
+                                        <div class="upload-section">
+                                            <label class="upload-label">Eval Data <span class="optional">(optional)</span></label>
+                                            <div class="upload-box" id="eval-upload">
+                                                <input type="file" id="eval_file" accept=".csv,.jsonl" hidden>
+                                                <span class="upload-icon">↑</span>
+                                                <span class="upload-text" id="eval_file_info">CSV or JSONL</span>
+                                            </div>
+                                            <input type="hidden" id="eval_filename" name="eval_filename">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- HuggingFace Dataset Tab -->
+                                <div class="tab-content" id="tab-huggingface">
+                                    <div class="form-row">
+                                        <div class="form-field">
+                                            <label>Dataset <span class="required">*</span></label>
+                                            <input type="text" id="hf_dataset" name="hf_dataset"
+                                                   placeholder="sentence-transformers/all-nli">
+                                        </div>
+                                        <div class="form-field">
+                                            <label>Subset</label>
+                                            <input type="text" id="hf_subset" name="hf_subset"
+                                                   placeholder="triplet">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-field">
+                                            <label>Train Split</label>
+                                            <input type="text" id="hf_train_split" name="hf_train_split"
+                                                   value="train">
+                                        </div>
+                                        <div class="form-field">
+                                            <label>Eval Split</label>
+                                            <input type="text" id="hf_eval_split" name="hf_eval_split"
+                                                   placeholder="validation">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Parameters -->
+                    <div class="modal-column">
+                        <div class="column-header">Parameters</div>
+
+                        <!-- Basic Training Parameters -->
+                        <div class="form-section">
+                            <label class="section-label">Training</label>
+                            <div class="form-row">
+                                <div class="form-field compact">
+                                    <label>Epochs</label>
+                                    <input type="number" id="epochs" name="epochs" value="3" min="1">
+                                </div>
+                                <div class="form-field compact">
+                                    <label>Batch Size</label>
+                                    <input type="number" id="batch_size" name="batch_size" value="32" min="1">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-field compact">
+                                    <label>Learning Rate</label>
+                                    <input type="text" id="learning_rate" name="learning_rate" value="2e-5">
+                                </div>
+                                <div class="form-field compact">
+                                    <label>Warmup Ratio</label>
+                                    <input type="text" id="warmup_ratio" name="warmup_ratio" value="0.1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Task-specific parameters (populated dynamically) -->
+                        <div id="task-specific-params"></div>
+
+                        <!-- Optimizer -->
+                        <div class="form-section">
+                            <label class="section-label">Optimizer</label>
+                            <div class="form-row">
+                                <div class="form-field compact">
+                                    <label>Weight Decay</label>
+                                    <input type="text" id="weight_decay" name="weight_decay" value="0.01">
+                                </div>
+                                <div class="form-field compact">
+                                    <label>Grad Accum</label>
+                                    <input type="number" id="gradient_accumulation_steps" name="gradient_accumulation_steps" value="1" min="1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Checkpoints -->
+                        <div class="form-section">
+                            <label class="section-label">Checkpoints</label>
+                            <div class="form-row">
+                                <div class="form-field compact">
+                                    <label>Eval Steps</label>
+                                    <input type="number" id="eval_steps" name="eval_steps" value="500" min="1">
+                                </div>
+                                <div class="form-field compact">
+                                    <label>Save Steps</label>
+                                    <input type="number" id="save_steps" name="save_steps" value="500" min="1">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-field compact">
+                                    <label>Logging Steps</label>
+                                    <input type="number" id="logging_steps" name="logging_steps" value="100" min="1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Precision & Options -->
+                        <div class="form-section">
+                            <label class="section-label">Options</label>
+                            <div class="form-row">
+                                <div class="form-field">
+                                    <label>Precision</label>
+                                    <div class="checkbox-grid">
+                                        <div class="checkbox-row">
+                                            <input type="radio" id="precision_fp16" name="precision" value="fp16" checked>
+                                            <label for="precision_fp16">FP16</label>
+                                        </div>
+                                        <div class="checkbox-row">
+                                            <input type="radio" id="precision_bf16" name="precision" value="bf16">
+                                            <label for="precision_bf16">BF16</label>
+                                        </div>
+                                        <div class="checkbox-row">
+                                            <input type="radio" id="precision_fp32" name="precision" value="fp32">
+                                            <label for="precision_fp32">FP32</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="checkbox-row" style="margin-top: var(--space-xs);">
+                                <input type="checkbox" id="use_unsloth" name="use_unsloth">
+                                <label for="use_unsloth">Unsloth (faster training)</label>
+                            </div>
+                        </div>
+
+                        <!-- Hub Push -->
+                        <div class="form-section">
+                            <label class="section-label">HuggingFace Hub</label>
+                            <div class="checkbox-row">
+                                <input type="checkbox" id="push_to_hub" name="push_to_hub">
+                                <label for="push_to_hub">Push to Hub (private)</label>
+                            </div>
+                            <div class="form-field" id="hub-model-field" style="display: none; margin-top: var(--space-xs);">
+                                <label>Hub Model ID</label>
+                                <input type="text" id="hub_model_id" name="hub_model_id"
+                                       placeholder="username/model-name">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" id="start-btn" class="btn-primary">Start Training</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+
+</html>

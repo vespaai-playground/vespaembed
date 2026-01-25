@@ -1,0 +1,13 @@
+text
+Machine learning is transforming how we analyze data and make predictions.
+Natural language processing enables computers to understand human language.
+Deep learning models have revolutionized computer vision applications.
+Transformers have become the dominant architecture for NLP tasks.
+Embedding models convert text into dense vector representations.
+Semantic search finds relevant documents based on meaning rather than keywords.
+Fine-tuning allows pre-trained models to adapt to specific domains.
+Vector databases enable efficient similarity search at scale.
+Retrieval augmented generation combines search with language models.
+Sentence transformers create embeddings optimized for semantic similarity.
+Domain adaptation helps models perform better on specialized text.
+Unsupervised learning extracts patterns from unlabeled data.
