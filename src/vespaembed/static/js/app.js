@@ -27,7 +27,7 @@ const chartPlaceholder = document.getElementById('chart-placeholder');
 document.addEventListener('DOMContentLoaded', async () => {
     initChart();
     await loadTasks(); // Load tasks from API first
-    loadRuns();
+    await loadRuns(true); // Auto-select latest run on initial load
     setupEventListeners();
     setupFileUploads();
     setupTabs();
@@ -86,6 +86,14 @@ function updateTaskUI(task) {
     const descEl = document.getElementById('task-description');
     if (descEl) {
         descEl.textContent = task.description;
+    }
+
+    // Update required columns display
+    const columnsEl = document.getElementById('required-columns-list');
+    if (columnsEl && task.expected_columns) {
+        columnsEl.innerHTML = task.expected_columns.map(col =>
+            `<span class="required-column-tag">${col}</span>`
+        ).join('');
     }
 
     // Update sample data display
@@ -674,7 +682,7 @@ async function deleteRun() {
 }
 
 // Runs
-async function loadRuns() {
+async function loadRuns(autoSelectLatest = false) {
     try {
         const response = await fetch('/runs');
         runs = await response.json();
@@ -690,6 +698,11 @@ async function loadRuns() {
         if (activeRunId && !pollInterval) {
             pollLine = 0;
             startPolling(activeRunId);
+        }
+
+        // Auto-select latest run if requested and no run is selected
+        if (autoSelectLatest && runs.length > 0 && !selectedRunId) {
+            selectRun(runs[0].id);
         }
     } catch (error) {
         console.error('Failed to load runs:', error);

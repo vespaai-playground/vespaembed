@@ -121,7 +121,7 @@ class TrainRequest(BaseModel):
     # Advanced hyperparameters
     warmup_ratio: float = 0.1
     weight_decay: float = 0.01
-    fp16: bool = True
+    fp16: bool = False
     bf16: bool = False
     eval_steps: int = 500
     save_steps: int = 500
@@ -467,6 +467,14 @@ async def get_run_metrics(run_id: int):
 
     Returns metrics like loss, learning_rate, etc. parsed from tfevents files.
     """
+    import math
+
+    def sanitize_value(value):
+        """Convert NaN/Inf to None for JSON serialization."""
+        if math.isnan(value) or math.isinf(value):
+            return None
+        return value
+
     run = get_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -490,7 +498,8 @@ async def get_run_metrics(run_id: int):
             events = ea.Scalars(tag)
             # Clean up tag name (remove "train/" prefix if present)
             clean_tag = tag.replace("train/", "").replace("eval/", "eval_")
-            metrics[clean_tag] = [{"step": e.step, "value": e.value} for e in events]
+            # Sanitize values to handle NaN/Inf
+            metrics[clean_tag] = [{"step": e.step, "value": sanitize_value(e.value)} for e in events]
 
         return {"metrics": metrics}
 

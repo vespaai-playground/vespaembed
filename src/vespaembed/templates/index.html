@@ -175,9 +175,14 @@
                                 </select>
                                 <span class="field-hint" id="task-description"></span>
                             </div>
+                            <!-- Required columns -->
+                            <div class="required-columns" id="required-columns">
+                                <span class="required-columns-label">Required columns:</span>
+                                <span class="required-columns-list" id="required-columns-list"></span>
+                            </div>
                             <!-- Sample data format -->
                             <div class="sample-data-box" id="sample-data-box">
-                                <div class="sample-data-header">Expected data format:</div>
+                                <div class="sample-data-header">Example data:</div>
                                 <div class="sample-data-content" id="sample-data-content"></div>
                             </div>
                             <div class="form-field" style="margin-top: var(--space-sm);">
@@ -331,16 +336,16 @@
                                     <label>Precision</label>
                                     <div class="checkbox-grid">
                                         <div class="checkbox-row">
-                                            <input type="radio" id="precision_fp16" name="precision" value="fp16" checked>
+                                            <input type="radio" id="precision_fp32" name="precision" value="fp32" checked>
+                                            <label for="precision_fp32">FP32</label>
+                                        </div>
+                                        <div class="checkbox-row">
+                                            <input type="radio" id="precision_fp16" name="precision" value="fp16">
                                             <label for="precision_fp16">FP16</label>
                                         </div>
                                         <div class="checkbox-row">
                                             <input type="radio" id="precision_bf16" name="precision" value="bf16">
                                             <label for="precision_bf16">BF16</label>
-                                        </div>
-                                        <div class="checkbox-row">
-                                            <input type="radio" id="precision_fp32" name="precision" value="fp32">
-                                            <label for="precision_fp32">FP32</label>
                                         </div>
                                     </div>
                                 </div>

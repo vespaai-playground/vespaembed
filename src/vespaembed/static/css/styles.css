@@ -641,8 +641,8 @@ body {
 .modal-wide {
     width: 920px;
     max-width: 95vw;
-    height: 580px;
-    max-height: 90vh;
+    height: 85vh;
+    max-height: 800px;
     display: flex;
     flex-direction: column;
 }
@@ -799,6 +799,34 @@ body {
 .modal-wide .field-hint {
     font-size: 10px;
     margin-top: 2px;
+}
+
+/* Required columns */
+.required-columns {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-top: var(--space-xs);
+    font-size: var(--font-xs);
+}
+
+.required-columns-label {
+    color: var(--low-contrast-text);
+}
+
+.required-columns-list {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+}
+
+.required-column-tag {
+    background: var(--heather-dim);
+    color: var(--heather-light);
+    padding: 2px 6px;
+    border-radius: var(--radius-xs);
+    font-family: var(--mono);
+    font-size: 11px;
 }
 
 /* Sample data box */
