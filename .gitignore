@@ -5,7 +5,7 @@ examples/text_classification/.logs/
 *.bin
 input/
 outputs/
-datasets/
+/datasets/
 examples/output/
 output/
 test_data/
