@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -13,6 +13,29 @@ class DataConfig(BaseModel):
     subset: Optional[str] = Field(None, description="HuggingFace dataset subset")
     split: Optional[str] = Field(None, description="HuggingFace dataset split for training")
     eval_split: Optional[str] = Field(None, description="HuggingFace dataset split for evaluation")
+
+
+class LoraConfig(BaseModel):
+    """LoRA/PEFT configuration - works with both standard and Unsloth training."""
+
+    enabled: bool = Field(False, description="Enable LoRA training")
+    r: int = Field(64, description="LoRA rank (common values: 8, 16, 32, 64, 128)", ge=1)
+    alpha: int = Field(128, description="LoRA alpha (typically 2x rank)")
+    dropout: float = Field(0.1, description="LoRA dropout (use 0 for Unsloth optimization)", ge=0, le=1)
+    target_modules: list[str] = Field(
+        default=["query", "key", "value", "dense"],
+        description="Target modules for LoRA",
+    )
+
+
+class UnslothConfig(BaseModel):
+    """Unsloth-specific configuration for faster training."""
+
+    enabled: bool = Field(False, description="Enable Unsloth for faster training")
+    save_method: Literal["lora", "merged_16bit", "merged_4bit"] = Field(
+        "merged_16bit",
+        description="How to save the model (lora=adapters only, merged=full model)",
+    )
 
 
 class TrainingHyperparameters(BaseModel):
@@ -37,7 +60,7 @@ class OutputConfig(BaseModel):
     dir: str = Field("./output", description="Output directory")
     save_total_limit: int = Field(3, description="Maximum checkpoints to keep", ge=1)
     push_to_hub: bool = Field(False, description="Push model to HuggingFace Hub")
-    hub_model_id: Optional[str] = Field(None, description="HuggingFace Hub model ID")
+    hf_username: Optional[str] = Field(None, description="HuggingFace username")
 
 
 class TrainingConfig(BaseModel):
@@ -58,8 +81,28 @@ class TrainingConfig(BaseModel):
         description="Output configuration",
     )
 
-    # Unsloth
-    unsloth: bool = Field(False, description="Use Unsloth for faster training")
+    # LoRA/PEFT configuration
+    lora: LoraConfig = Field(
+        default_factory=LoraConfig,
+        description="LoRA/PEFT configuration",
+    )
+
+    # Unsloth configuration
+    unsloth: UnslothConfig = Field(
+        default_factory=UnslothConfig,
+        description="Unsloth configuration for faster training",
+    )
+
+    # Model configuration
+    max_seq_length: Optional[int] = Field(
+        None,
+        description="Maximum sequence length (auto-detect from model if not specified)",
+        ge=1,
+    )
+    gradient_checkpointing: bool = Field(
+        False,
+        description="Enable gradient checkpointing (saves VRAM, uses Unsloth optimization when Unsloth is enabled)",
+    )
 
     # Matryoshka dimensions (optional)
     matryoshka_dims: Optional[list[int]] = Field(

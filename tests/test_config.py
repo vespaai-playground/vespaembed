@@ -7,9 +7,11 @@ import pytest
 
 from vespaembed.core.config import (
     DataConfig,
+    LoraConfig,
     OutputConfig,
     TrainingConfig,
     TrainingHyperparameters,
+    UnslothConfig,
     load_config_from_dict,
     load_config_from_yaml,
 )
@@ -110,7 +112,7 @@ class TestOutputConfig:
         assert config.dir == "./output"
         assert config.save_total_limit == 3
         assert config.push_to_hub is False
-        assert config.hub_model_id is None
+        assert config.hf_username is None
 
     def test_custom_values(self):
         """Test custom output config values."""
@@ -118,12 +120,74 @@ class TestOutputConfig:
             dir="/custom/path",
             save_total_limit=5,
             push_to_hub=True,
-            hub_model_id="user/model",
+            hf_username="testuser",
         )
         assert config.dir == "/custom/path"
         assert config.save_total_limit == 5
         assert config.push_to_hub is True
-        assert config.hub_model_id == "user/model"
+        assert config.hf_username == "testuser"
+
+
+class TestLoraConfig:
+    """Test LoraConfig model."""
+
+    def test_default_values(self):
+        """Test default LoRA config values."""
+        config = LoraConfig()
+        assert config.enabled is False
+        assert config.r == 64
+        assert config.alpha == 128
+        assert config.dropout == 0.1
+        assert config.target_modules == ["query", "key", "value", "dense"]
+
+    def test_custom_values(self):
+        """Test custom LoRA config values."""
+        config = LoraConfig(
+            enabled=True,
+            r=32,
+            alpha=64,
+            dropout=0.05,
+            target_modules=["Wqkv", "Wi", "Wo"],
+        )
+        assert config.enabled is True
+        assert config.r == 32
+        assert config.alpha == 64
+        assert config.dropout == 0.05
+        assert config.target_modules == ["Wqkv", "Wi", "Wo"]
+
+    def test_validation_r_positive(self):
+        """Test that r must be positive."""
+        with pytest.raises(ValueError):
+            LoraConfig(r=0)
+
+    def test_validation_dropout_range(self):
+        """Test that dropout is between 0 and 1."""
+        with pytest.raises(ValueError):
+            LoraConfig(dropout=1.5)
+
+
+class TestUnslothConfig:
+    """Test UnslothConfig model."""
+
+    def test_default_values(self):
+        """Test default Unsloth config values."""
+        config = UnslothConfig()
+        assert config.enabled is False
+        assert config.save_method == "merged_16bit"
+
+    def test_custom_values(self):
+        """Test custom Unsloth config values."""
+        config = UnslothConfig(
+            enabled=True,
+            save_method="lora",
+        )
+        assert config.enabled is True
+        assert config.save_method == "lora"
+
+    def test_validation_save_method(self):
+        """Test that save_method must be valid literal."""
+        with pytest.raises(ValueError):
+            UnslothConfig(save_method="invalid")
 
 
 class TestTrainingConfig:
@@ -139,7 +203,10 @@ class TestTrainingConfig:
         assert config.task == "mnr"
         assert config.base_model == "sentence-transformers/all-MiniLM-L6-v2"
         assert config.data.train == "train.csv"
-        assert config.unsloth is False
+        assert config.unsloth.enabled is False
+        assert config.lora.enabled is False
+        assert config.max_seq_length is None  # Auto-detect by default
+        assert config.gradient_checkpointing is False  # Disabled by default
         assert config.matryoshka_dims is None
 
     def test_full_config(self):
@@ -149,15 +216,22 @@ class TestTrainingConfig:
             base_model="BAAI/bge-small-en-v1.5",
             data=DataConfig(train="train.csv", eval="eval.csv"),
             training=TrainingHyperparameters(epochs=5, batch_size=16),
-            output=OutputConfig(dir="/output", push_to_hub=True, hub_model_id="user/model"),
-            unsloth=True,
+            output=OutputConfig(dir="/output", push_to_hub=True, hf_username="user"),
+            lora=LoraConfig(enabled=True, r=32, alpha=64),
+            unsloth=UnslothConfig(enabled=True),
+            max_seq_length=256,
+            gradient_checkpointing=True,
             matryoshka_dims=[512, 256, 128],
         )
         assert config.task == "matryoshka"
         assert config.training.epochs == 5
         assert config.training.batch_size == 16
         assert config.output.push_to_hub is True
-        assert config.unsloth is True
+        assert config.lora.enabled is True
+        assert config.lora.r == 32
+        assert config.unsloth.enabled is True
+        assert config.max_seq_length == 256
+        assert config.gradient_checkpointing is True
         assert config.matryoshka_dims == [512, 256, 128]
 
     def test_nested_dict_config(self):

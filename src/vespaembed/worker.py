@@ -9,7 +9,14 @@ from pathlib import Path
 
 # Import tasks to register them
 import vespaembed.tasks  # noqa: F401
-from vespaembed.core.config import DataConfig, OutputConfig, TrainingConfig, TrainingHyperparameters
+from vespaembed.core.config import (
+    DataConfig,
+    LoraConfig,
+    OutputConfig,
+    TrainingConfig,
+    TrainingHyperparameters,
+    UnslothConfig,
+)
 from vespaembed.core.trainer import VespaEmbedTrainer
 from vespaembed.db import update_run_status
 from vespaembed.enums import RunStatus
@@ -85,6 +92,28 @@ class TrainingWorker:
                 elif isinstance(dims_str, list):
                     matryoshka_dims = dims_str
 
+            # Parse lora_target_modules (comes as comma-separated string from UI)
+            modules_str = self.config.get("lora_target_modules", "query, key, value, dense")
+            if isinstance(modules_str, str):
+                lora_target_modules = [m.strip() for m in modules_str.split(",") if m.strip()]
+            else:
+                lora_target_modules = modules_str  # Already a list
+
+            # Build LoRA config
+            lora_config = LoraConfig(
+                enabled=self.config.get("lora_enabled", False),
+                r=self.config.get("lora_r", 64),
+                alpha=self.config.get("lora_alpha", 128),
+                dropout=self.config.get("lora_dropout", 0.1),
+                target_modules=lora_target_modules,
+            )
+
+            # Build Unsloth config
+            unsloth_config = UnslothConfig(
+                enabled=self.config.get("unsloth_enabled", False),
+                save_method=self.config.get("unsloth_save_method", "merged_16bit"),
+            )
+
             # Build training config with nested structure
             training_config = TrainingConfig(
                 task=self.config["task"],
@@ -96,7 +125,7 @@ class TrainingWorker:
                     learning_rate=self.config.get("learning_rate", 2e-5),
                     warmup_ratio=self.config.get("warmup_ratio", 0.1),
                     weight_decay=self.config.get("weight_decay", 0.01),
-                    fp16=self.config.get("fp16", True),
+                    fp16=self.config.get("fp16", False),
                     bf16=self.config.get("bf16", False),
                     eval_steps=self.config.get("eval_steps", 500),
                     save_steps=self.config.get("save_steps", 500),
@@ -106,9 +135,12 @@ class TrainingWorker:
                 output=OutputConfig(
                     dir=self.config["output_dir"],  # Required - set by web app
                     push_to_hub=self.config.get("push_to_hub", False),
-                    hub_model_id=self.config.get("hub_model_id"),
+                    hf_username=self.config.get("hf_username"),
                 ),
-                unsloth=self.config.get("use_unsloth", False),
+                lora=lora_config,
+                unsloth=unsloth_config,
+                max_seq_length=self.config.get("max_seq_length"),  # None = auto-detect
+                gradient_checkpointing=self.config.get("gradient_checkpointing", False),
                 matryoshka_dims=matryoshka_dims,
             )
 

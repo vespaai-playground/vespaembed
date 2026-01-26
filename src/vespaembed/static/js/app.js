@@ -32,7 +32,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupFileUploads();
     setupTabs();
     setupHubToggle();
+    setupLoraToggle();
+    setupUnslothToggle();
     setupTaskSelector();
+    setupWizard();
 });
 
 // Generate random project name
@@ -112,13 +115,13 @@ function updateTaskUI(task) {
         setValueIfExists('logging_steps', hyper.logging_steps);
         setValueIfExists('gradient_accumulation_steps', hyper.gradient_accumulation_steps);
 
-        // Set precision radio button
+        // Set precision dropdown
         if (hyper.bf16) {
-            setRadioChecked('precision', 'bf16');
+            setValueIfExists('precision', 'bf16');
         } else if (hyper.fp16) {
-            setRadioChecked('precision', 'fp16');
+            setValueIfExists('precision', 'fp16');
         } else {
-            setRadioChecked('precision', 'fp32');
+            setValueIfExists('precision', 'fp32');
         }
     }
 
@@ -354,11 +357,26 @@ function resetFormToTaskDefaults() {
 
     // Reset hub settings
     document.getElementById('push_to_hub').checked = false;
-    document.getElementById('hub_model_id').value = '';
-    document.getElementById('hub-model-field').style.display = 'none';
+    document.getElementById('hf_username').value = '';
+    document.getElementById('hub-fields').style.display = 'none';
 
-    // Reset unsloth
-    document.getElementById('use_unsloth').checked = false;
+    // Reset LoRA settings
+    document.getElementById('lora_enabled').checked = false;
+    document.getElementById('lora_r').value = '64';
+    document.getElementById('lora_alpha').value = '128';
+    document.getElementById('lora_dropout').value = '0.1';
+    document.getElementById('lora_target_preset').value = 'query, key, value, dense';
+    document.getElementById('lora_target_modules').value = 'query, key, value, dense';
+    document.getElementById('lora-fields').style.display = 'none';
+
+    // Reset model settings
+    document.getElementById('max_seq_length').value = '';  // Empty = auto-detect
+    document.getElementById('gradient_checkpointing').checked = false;
+
+    // Reset Unsloth settings
+    document.getElementById('unsloth_enabled').checked = false;
+    document.getElementById('unsloth_save_method').value = 'merged_16bit';
+    document.getElementById('unsloth-fields').style.display = 'none';
 }
 
 // Event Listeners
@@ -370,6 +388,9 @@ function setupEventListeners() {
 
         // Reset form and apply defaults for currently selected task
         resetFormToTaskDefaults();
+
+        // Reset wizard to step 1
+        resetWizard();
 
         newTrainingModal.style.display = 'flex';
     });
@@ -435,11 +456,138 @@ function setupTabs() {
 // Hub Push Toggle
 function setupHubToggle() {
     const pushToHub = document.getElementById('push_to_hub');
-    const hubModelField = document.getElementById('hub-model-field');
+    const hubFields = document.getElementById('hub-fields');
 
     pushToHub.addEventListener('change', () => {
-        hubModelField.style.display = pushToHub.checked ? 'block' : 'none';
+        hubFields.style.display = pushToHub.checked ? 'block' : 'none';
     });
+}
+
+// LoRA Toggle
+function setupLoraToggle() {
+    const loraEnabled = document.getElementById('lora_enabled');
+    const loraFields = document.getElementById('lora-fields');
+
+    loraEnabled.addEventListener('change', () => {
+        loraFields.style.display = loraEnabled.checked ? 'block' : 'none';
+    });
+
+    // Target modules preset select
+    const presetSelect = document.getElementById('lora_target_preset');
+    const targetInput = document.getElementById('lora_target_modules');
+
+    presetSelect.addEventListener('change', () => {
+        targetInput.value = presetSelect.value;
+    });
+}
+
+// Unsloth Toggle
+function setupUnslothToggle() {
+    const unslothEnabled = document.getElementById('unsloth_enabled');
+    const unslothFields = document.getElementById('unsloth-fields');
+
+    unslothEnabled.addEventListener('change', () => {
+        unslothFields.style.display = unslothEnabled.checked ? 'block' : 'none';
+    });
+}
+
+// Wizard Navigation
+let currentWizardStep = 1;
+const totalWizardSteps = 3;
+
+function setupWizard() {
+    const nextBtn = document.getElementById('wizard-next');
+    const backBtn = document.getElementById('wizard-back');
+    const startBtn = document.getElementById('start-btn');
+
+    nextBtn.addEventListener('click', () => {
+        if (validateCurrentStep()) {
+            goToStep(currentWizardStep + 1);
+        }
+    });
+
+    backBtn.addEventListener('click', () => {
+        goToStep(currentWizardStep - 1);
+    });
+}
+
+function goToStep(step) {
+    if (step < 1 || step > totalWizardSteps) return;
+
+    // Hide current step
+    document.getElementById(`wizard-step-${currentWizardStep}`).style.display = 'none';
+    document.querySelector(`.wizard-step[data-step="${currentWizardStep}"]`).classList.remove('active');
+
+    // Mark previous steps as completed
+    if (step > currentWizardStep) {
+        document.querySelector(`.wizard-step[data-step="${currentWizardStep}"]`).classList.add('completed');
+    }
+
+    // Show new step
+    currentWizardStep = step;
+    document.getElementById(`wizard-step-${currentWizardStep}`).style.display = 'block';
+    document.querySelector(`.wizard-step[data-step="${currentWizardStep}"]`).classList.add('active');
+    document.querySelector(`.wizard-step[data-step="${currentWizardStep}"]`).classList.remove('completed');
+
+    // Update button visibility
+    const backBtn = document.getElementById('wizard-back');
+    const nextBtn = document.getElementById('wizard-next');
+    const startBtn = document.getElementById('start-btn');
+
+    backBtn.style.display = currentWizardStep > 1 ? 'block' : 'none';
+    nextBtn.style.display = currentWizardStep < totalWizardSteps ? 'block' : 'none';
+    startBtn.style.display = currentWizardStep === totalWizardSteps ? 'block' : 'none';
+}
+
+function validateCurrentStep() {
+    if (currentWizardStep === 1) {
+        // Validate step 1: project name, task, model, data
+        const projectName = document.getElementById('project_name').value.trim();
+        if (!projectName) {
+            alert('Please enter a project name');
+            return false;
+        }
+        if (!/^[a-zA-Z0-9][a-zA-Z0-9-]*$/.test(projectName)) {
+            alert('Project name must start with alphanumeric and contain only alphanumeric characters and hyphens');
+            return false;
+        }
+
+        // Validate data source
+        if (currentDataSource === 'file') {
+            const trainFile = document.getElementById('train_filename').value;
+            if (!trainFile) {
+                alert('Please upload training data');
+                return false;
+            }
+        } else {
+            const hfDataset = document.getElementById('hf_dataset').value.trim();
+            if (!hfDataset) {
+                alert('Please enter a HuggingFace dataset name');
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function resetWizard() {
+    currentWizardStep = 1;
+
+    // Reset step indicators
+    document.querySelectorAll('.wizard-step').forEach((step, index) => {
+        step.classList.remove('active', 'completed');
+        if (index === 0) step.classList.add('active');
+    });
+
+    // Show only first step
+    for (let i = 1; i <= totalWizardSteps; i++) {
+        document.getElementById(`wizard-step-${i}`).style.display = i === 1 ? 'block' : 'none';
+    }
+
+    // Reset buttons
+    document.getElementById('wizard-back').style.display = 'none';
+    document.getElementById('wizard-next').style.display = 'block';
+    document.getElementById('start-btn').style.display = 'none';
 }
 
 // File Uploads
@@ -535,7 +683,7 @@ async function handleTrainSubmit(e) {
     }
 
     // Get selected precision mode
-    const precision = document.querySelector('input[name="precision"]:checked')?.value || 'fp16';
+    const precision = document.getElementById('precision').value || 'fp32';
 
     const formData = {
         project_name: projectName,
@@ -554,11 +702,27 @@ async function handleTrainSubmit(e) {
         save_steps: parseInt(document.getElementById('save_steps').value),
         fp16: precision === 'fp16',
         bf16: precision === 'bf16',
-        use_unsloth: document.getElementById('use_unsloth').checked,
+
+        // LoRA settings
+        lora_enabled: document.getElementById('lora_enabled').checked,
+        lora_r: parseInt(document.getElementById('lora_r').value),
+        lora_alpha: parseInt(document.getElementById('lora_alpha').value),
+        lora_dropout: parseFloat(document.getElementById('lora_dropout').value),
+        lora_target_modules: document.getElementById('lora_target_modules').value.trim(),
+
+        // Model settings
+        max_seq_length: document.getElementById('max_seq_length').value
+            ? parseInt(document.getElementById('max_seq_length').value)
+            : null,  // null = auto-detect from model
+        gradient_checkpointing: document.getElementById('gradient_checkpointing').checked,
+
+        // Unsloth settings
+        unsloth_enabled: document.getElementById('unsloth_enabled').checked,
+        unsloth_save_method: document.getElementById('unsloth_save_method').value,
 
         // Hub settings
         push_to_hub: document.getElementById('push_to_hub').checked,
-        hub_model_id: document.getElementById('hub_model_id').value || null,
+        hf_username: document.getElementById('hf_username').value.trim() || null,
 
         // Task-specific parameters
         ...getTaskSpecificParams(),
@@ -586,8 +750,8 @@ async function handleTrainSubmit(e) {
     }
 
     // Validate hub settings
-    if (formData.push_to_hub && !formData.hub_model_id) {
-        alert('Please enter a Hub Model ID when pushing to Hub');
+    if (formData.push_to_hub && !formData.hf_username) {
+        alert('Please enter your HuggingFace username');
         return;
     }
 

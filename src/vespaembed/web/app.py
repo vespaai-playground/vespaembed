@@ -128,12 +128,26 @@ class TrainRequest(BaseModel):
     logging_steps: int = 100
     gradient_accumulation_steps: int = 1
 
-    # Unsloth
-    use_unsloth: bool = False
+    # LoRA/PEFT parameters
+    lora_enabled: bool = False
+    lora_r: int = 64
+    lora_alpha: int = 128
+    lora_dropout: float = 0.1
+    lora_target_modules: str = Field(
+        "query, key, value, dense", description="Comma-separated list of target modules"
+    )
+
+    # Model configuration
+    max_seq_length: Optional[int] = None  # Auto-detect from model if not specified
+    gradient_checkpointing: bool = False  # Saves VRAM, uses Unsloth optimization when Unsloth is enabled
+
+    # Unsloth parameters
+    unsloth_enabled: bool = False
+    unsloth_save_method: str = "merged_16bit"  # "lora", "merged_16bit", "merged_4bit"
 
     # Hub push
     push_to_hub: bool = False
-    hub_model_id: Optional[str] = None
+    hf_username: Optional[str] = None
 
     # Task-specific parameters
     matryoshka_dims: Optional[str] = Field(
@@ -276,10 +290,10 @@ async def train(config: TrainRequest):
         raise HTTPException(status_code=400, detail="Evaluation data file not found")
 
     # Validate hub config
-    if config.push_to_hub and not config.hub_model_id:
+    if config.push_to_hub and not config.hf_username:
         raise HTTPException(
             status_code=400,
-            detail="hub_model_id is required when push_to_hub is enabled",
+            detail="hf_username is required when push_to_hub is enabled",
         )
 
     # Create output directory in ~/.vespaembed/projects/

@@ -1494,3 +1494,210 @@ input:disabled {
     scrollbar-width: thin;
     scrollbar-color: var(--ui-element-border) var(--subtle-border);
 }
+
+/* ==================== */
+/* Wizard Modal Styles  */
+/* ==================== */
+
+.modal-wizard {
+    width: 600px;
+    max-width: 95vw;
+    height: auto;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-wizard .modal-header {
+    padding: var(--space-sm) var(--space-lg);
+    font-size: var(--font-md);
+    flex-shrink: 0;
+}
+
+/* Step Indicators */
+.wizard-steps {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--subtle-background);
+    border-bottom: 1px solid var(--subtle-border);
+    gap: var(--space-xl);
+}
+
+.wizard-step {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.wizard-step.active {
+    opacity: 1;
+}
+
+.wizard-step.completed {
+    opacity: 0.8;
+}
+
+.step-number {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--ui-element-background);
+    border: 2px solid var(--subtle-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xs);
+    font-weight: var(--font-bold);
+    transition: all 0.2s;
+}
+
+.wizard-step.active .step-number {
+    background: var(--heather);
+    border-color: var(--heather-light);
+    color: white;
+}
+
+.wizard-step.completed .step-number {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+}
+
+.step-label {
+    font-size: var(--font-sm);
+    font-weight: var(--font-medium);
+    color: var(--low-contrast-text);
+}
+
+.wizard-step.active .step-label {
+    color: var(--high-contrast-text);
+}
+
+/* Wizard Content */
+.wizard-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-lg);
+}
+
+.modal-wizard form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Wizard Footer */
+.wizard-footer {
+    display: flex;
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    border-top: 1px solid var(--subtle-border);
+    gap: var(--space-sm);
+}
+
+.wizard-footer .footer-spacer {
+    flex: 1;
+}
+
+.btn-secondary {
+    background: var(--ui-element-background);
+    color: var(--high-contrast-text);
+    border: 1px solid var(--ui-element-border);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-sm);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-secondary:hover {
+    background: var(--hovered-ui-element-background);
+    border-color: var(--hovered-border);
+}
+
+/* Compact form styles for wizard */
+.modal-wizard .form-section {
+    margin-bottom: var(--space-md);
+}
+
+.modal-wizard .section-label {
+    margin-bottom: var(--space-xs);
+    font-size: var(--font-xs);
+}
+
+.modal-wizard .form-field {
+    margin-bottom: var(--space-xs);
+}
+
+.modal-wizard .form-field label {
+    margin-bottom: 2px;
+}
+
+.modal-wizard .form-row {
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xs);
+}
+
+.modal-wizard input[type="text"],
+.modal-wizard input[type="number"],
+.modal-wizard select {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: var(--font-sm);
+}
+
+.modal-wizard .tabs {
+    margin-bottom: var(--space-xs);
+}
+
+.modal-wizard .tab {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: var(--font-xs);
+}
+
+.modal-wizard .upload-grid {
+    gap: var(--space-xs);
+}
+
+.modal-wizard .upload-box {
+    padding: var(--space-sm);
+    min-height: 60px;
+}
+
+.modal-wizard .upload-label {
+    font-size: var(--font-xs);
+    margin-bottom: 2px;
+}
+
+.modal-wizard .checkbox-row label {
+    font-size: var(--font-xs);
+}
+
+.modal-wizard .field-hint {
+    font-size: 10px;
+    margin-top: 2px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .modal-wizard {
+        max-width: 100vw;
+        max-height: 100vh;
+        height: 100vh;
+        border-radius: 0;
+    }
+
+    .wizard-steps {
+        gap: var(--space-md);
+    }
+
+    .step-label {
+        display: none;
+    }
+}

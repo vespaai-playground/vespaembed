@@ -14,10 +14,10 @@ class TestHealthAndIndex:
         assert "VespaEmbed" in response.text
 
     def test_index_contains_modal(self, client):
-        """Test that the index page contains the new project modal."""
+        """Test that the index page contains the new project modal with wizard layout."""
         response = client.get("/")
         assert "new-training-modal" in response.text
-        assert "modal-two-column" in response.text
+        assert "modal-wizard" in response.text
 
 
 class TestTasksAPI:
@@ -295,7 +295,7 @@ class TestTrainEndpoint:
         assert response.status_code == 422  # Validation error
 
     def test_train_validates_hub_config(self, client):
-        """Test that hub_model_id is required when push_to_hub is true."""
+        """Test that hf_username is required when push_to_hub is true."""
         response = client.post(
             "/train",
             json={
@@ -309,7 +309,7 @@ class TestTrainEndpoint:
         )
 
         assert response.status_code == 400
-        assert "hub_model_id is required" in response.json()["detail"]
+        assert "hf_username is required" in response.json()["detail"]
 
     def test_train_rejects_nonexistent_file(self, client):
         """Test that training rejects non-existent file."""

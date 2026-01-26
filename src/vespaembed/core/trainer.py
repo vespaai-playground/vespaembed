@@ -12,8 +12,8 @@ from vespaembed.core.registry import Registry
 from vespaembed.datasets.loader import load_dataset
 from vespaembed.utils.logging import logger
 
-# Get HuggingFace token from environment
-HF_TOKEN = os.environ.get("HF_TOKEN")
+# Get HuggingFace token from environment (fallback for loading private models)
+HF_TOKEN_ENV = os.environ.get("HF_TOKEN")
 
 
 class ProgressCallback(TrainerCallback):
@@ -106,21 +106,113 @@ class VespaEmbedTrainer:
         self.progress_callback = progress_callback
 
     def _load_model(self) -> SentenceTransformer:
-        """Load the model, using Unsloth if enabled."""
-        if self.config.unsloth:
-            try:
-                from unsloth import FastSentenceTransformer
+        """Load the model with optional LoRA and Unsloth support.
 
-                logger.info(f"Loading model with Unsloth: {self.config.base_model}")
-                return FastSentenceTransformer.from_pretrained(
-                    self.config.base_model,
-                    token=HF_TOKEN,
-                )
-            except ImportError:
-                raise ImportError("Unsloth not installed. Install with: pip install vespaembed[unsloth]")
+        Supports four modes:
+        1. Standard: SentenceTransformer only
+        2. Standard + LoRA: SentenceTransformer with PEFT adapter
+        3. Unsloth: FastSentenceTransformer (faster training)
+        4. Unsloth + LoRA: FastSentenceTransformer with LoRA via get_peft_model
+        """
+        use_unsloth = self.config.unsloth.enabled
+        use_lora = self.config.lora.enabled
+
+        if use_unsloth:
+            return self._load_unsloth_model()
         else:
-            logger.info(f"Loading model: {self.config.base_model}")
-            return SentenceTransformer(self.config.base_model, token=HF_TOKEN)
+            return self._load_standard_model()
+
+    def _load_standard_model(self) -> SentenceTransformer:
+        """Load model with standard SentenceTransformer, optionally with LoRA."""
+        logger.info(f"Loading model: {self.config.base_model}")
+        model = SentenceTransformer(self.config.base_model, token=HF_TOKEN_ENV)
+
+        # Set max_seq_length if specified
+        if self.config.max_seq_length:
+            model.max_seq_length = self.config.max_seq_length
+            logger.info(f"Set max_seq_length: {self.config.max_seq_length}")
+        else:
+            logger.info(f"Using model's default max_seq_length: {model.max_seq_length}")
+
+        # Add LoRA adapter if enabled
+        if self.config.lora.enabled:
+            try:
+                from peft import LoraConfig, TaskType
+
+                logger.info(
+                    f"Adding LoRA adapter: r={self.config.lora.r}, "
+                    f"alpha={self.config.lora.alpha}, dropout={self.config.lora.dropout}, "
+                    f"target_modules={self.config.lora.target_modules}"
+                )
+
+                peft_config = LoraConfig(
+                    task_type=TaskType.FEATURE_EXTRACTION,
+                    r=self.config.lora.r,
+                    lora_alpha=self.config.lora.alpha,
+                    lora_dropout=self.config.lora.dropout,
+                    target_modules=self.config.lora.target_modules,
+                )
+                model.add_adapter(peft_config)
+
+            except ImportError:
+                raise ImportError("PEFT not installed. Install with: pip install peft")
+
+        return model
+
+    def _load_unsloth_model(self) -> SentenceTransformer:
+        """Load model with Unsloth for faster training."""
+        try:
+            from unsloth import FastSentenceTransformer
+        except ImportError:
+            raise ImportError("Unsloth not installed. Install with: pip install unsloth")
+
+        # Auto-detect max_seq_length from model if not specified
+        max_seq_length = self.config.max_seq_length
+        if max_seq_length is None:
+            # Load model temporarily to get max_seq_length
+            temp_model = SentenceTransformer(self.config.base_model, token=HF_TOKEN_ENV)
+            max_seq_length = temp_model.max_seq_length
+            del temp_model
+            logger.info(f"Auto-detected max_seq_length: {max_seq_length}")
+        else:
+            logger.info(f"Using specified max_seq_length: {max_seq_length}")
+
+        # Full finetuning when Unsloth is enabled but LoRA is not
+        full_finetuning = not self.config.lora.enabled
+
+        logger.info(f"Loading model with Unsloth: {self.config.base_model}")
+        model = FastSentenceTransformer.from_pretrained(
+            model_name=self.config.base_model,
+            max_seq_length=max_seq_length,
+            full_finetuning=full_finetuning,
+            token=HF_TOKEN_ENV,
+        )
+
+        # Add LoRA if enabled
+        if self.config.lora.enabled:
+            # Use Unsloth's optimized gradient checkpointing when enabled
+            use_gc = "unsloth" if self.config.gradient_checkpointing else False
+
+            logger.info(
+                f"Applying Unsloth LoRA: r={self.config.lora.r}, "
+                f"alpha={self.config.lora.alpha}, target_modules={self.config.lora.target_modules}"
+            )
+
+            model = FastSentenceTransformer.get_peft_model(
+                model,
+                r=self.config.lora.r,
+                lora_alpha=self.config.lora.alpha,
+                lora_dropout=self.config.lora.dropout,
+                target_modules=self.config.lora.target_modules,
+                bias="none",
+                use_gradient_checkpointing=use_gc,
+                random_state=3407,
+                use_rslora=False,
+                loftq_config=None,
+                task_type="FEATURE_EXTRACTION",
+            )
+
+        return model
 
     def train(self) -> SentenceTransformer:
         """Run the training process.
@@ -190,6 +282,7 @@ class VespaEmbedTrainer:
             weight_decay=self.config.training.weight_decay,
             fp16=self.config.training.fp16,
             bf16=self.config.training.bf16,
+            gradient_checkpointing=self.config.gradient_checkpointing,
             batch_sampler=self.task.batch_sampler,
             eval_strategy="steps" if evaluator else "no",
             eval_steps=self.config.training.eval_steps if evaluator else None,
@@ -225,11 +318,7 @@ class VespaEmbedTrainer:
         # 10. Save final model
         final_path = output_dir / "final"
         logger.info(f"Saving model to: {final_path}")
-
-        if self.config.unsloth:
-            self.model.save_pretrained_merged(str(final_path))
-        else:
-            self.model.save_pretrained(str(final_path))
+        self._save_model(final_path)
 
         # 11. Add label mappings to config.json if task has labels (HuggingFace convention)
         label_config = self.task.get_label_config()
@@ -244,13 +333,73 @@ class VespaEmbedTrainer:
                 logger.info(f"Added label mappings to config.json ({label_config['num_labels']} labels)")
 
         # 12. Push to hub if configured (always private)
-        if self.config.output.push_to_hub and self.config.output.hub_model_id:
-            logger.info(f"Pushing to HuggingFace Hub (private): {self.config.output.hub_model_id}")
-            self.model.push_to_hub(
-                self.config.output.hub_model_id,
-                token=HF_TOKEN,
-                private=True,
-            )
+        if self.config.output.push_to_hub and self.config.output.hf_username:
+            if not HF_TOKEN_ENV:
+                logger.warning("HF_TOKEN environment variable not set, skipping push to hub")
+            else:
+                # Construct repo name from username and project directory name
+                project_name = Path(self.config.output.dir).name
+                repo_id = f"{self.config.output.hf_username}/{project_name}"
+                logger.info(f"Pushing to HuggingFace Hub (private): {repo_id}")
+                self._push_to_hub(repo_id)
 
         logger.success("Training completed!")
         return self.model
+
+    def _save_model(self, path: Path) -> None:
+        """Save the model based on configuration.
+
+        Handles different save methods for standard, LoRA, and Unsloth models.
+        """
+        path_str = str(path)
+
+        if self.config.unsloth.enabled:
+            save_method = self.config.unsloth.save_method
+
+            if save_method == "lora":
+                # Save only LoRA adapters
+                logger.info("Saving LoRA adapters only")
+                self.model.save_pretrained(path_str)
+            elif save_method == "merged_16bit":
+                # Merge and save as FP16
+                logger.info("Saving merged model (FP16)")
+                self.model.save_pretrained_merged(
+                    path_str,
+                    tokenizer=self.model.tokenizer,
+                    save_method="merged_16bit",
+                )
+            elif save_method == "merged_4bit":
+                # Merge and save as 4-bit
+                logger.info("Saving merged model (4-bit)")
+                self.model.save_pretrained_merged(
+                    path_str,
+                    tokenizer=self.model.tokenizer,
+                    save_method="merged_4bit",
+                )
+        else:
+            # Standard or LoRA (PEFT) save
+            self.model.save_pretrained(path_str)
+
+    def _push_to_hub(self, repo_id: str) -> None:
+        """Push the model to HuggingFace Hub.
+
+        Handles different push methods for standard, LoRA, and Unsloth models.
+        """
+        if self.config.unsloth.enabled:
+            save_method = self.config.unsloth.save_method
+
+            if save_method == "lora":
+                # Push only LoRA adapters
+                self.model.push_to_hub(repo_id, token=HF_TOKEN_ENV, private=True)
+            else:
+                # Push merged model
+                self.model.push_to_hub_merged(
+                    repo_id,
+                    tokenizer=self.model.tokenizer,
+                    save_method=save_method,
+                    token=HF_TOKEN_ENV,
+                    private=True,
+                )
+        else:
+            # Standard or LoRA (PEFT) save
+            self.model.push_to_hub(repo_id, token=HF_TOKEN_ENV, private=True)
