@@ -22,6 +22,9 @@ const runList = document.getElementById('run-list');
 const projectSummary = document.getElementById('project-summary');
 const logContent = document.getElementById('log-content');
 const chartPlaceholder = document.getElementById('chart-placeholder');
+const artifactsBtn = document.getElementById('artifacts-btn');
+const artifactsModal = document.getElementById('artifacts-modal');
+const closeArtifactsModal = document.getElementById('close-artifacts-modal');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -34,8 +37,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupHubToggle();
     setupLoraToggle();
     setupUnslothToggle();
+    setupMatryoshkaToggle();
     setupTaskSelector();
     setupWizard();
+    setupArtifactsModal();
 });
 
 // Generate random project name
@@ -99,8 +104,24 @@ function updateTaskUI(task) {
         ).join('');
     }
 
+    // Update loss variant dropdown
+    updateLossVariantUI(task);
+
     // Update sample data display
     updateSampleData(task);
+
+    // Update Matryoshka section visibility (not supported for TSDAE)
+    const matryoshkaSection = document.getElementById('matryoshka-section');
+    if (matryoshkaSection) {
+        if (task.name === 'tsdae') {
+            matryoshkaSection.style.display = 'none';
+            // Also uncheck and hide fields when switching to TSDAE
+            document.getElementById('matryoshka_enabled').checked = false;
+            document.getElementById('matryoshka-fields').style.display = 'none';
+        } else {
+            matryoshkaSection.style.display = 'block';
+        }
+    }
 
     // Update hyperparameters to task defaults
     const hyper = task.hyperparameters;
@@ -170,6 +191,67 @@ function updateSampleData(task) {
     }).join('');
 
     container.innerHTML = rowsHtml;
+}
+
+// Update loss variant dropdown based on selected task
+function updateLossVariantUI(task) {
+    const fieldEl = document.getElementById('loss-variant-field');
+    const selectEl = document.getElementById('loss_variant');
+    const hintEl = document.getElementById('loss-variant-hint');
+
+    if (!fieldEl || !selectEl) return;
+
+    // Check if task has loss options
+    if (task.loss_options && task.loss_options.length > 0) {
+        // Populate dropdown with multiple options
+        selectEl.innerHTML = task.loss_options.map(loss => {
+            const isDefault = loss === task.default_loss;
+            const label = formatLossLabel(loss) + (isDefault ? ' (default)' : '');
+            return `<option value="${loss}" ${isDefault ? 'selected' : ''}>${label}</option>`;
+        }).join('');
+        selectEl.disabled = false;
+
+        // Update hint based on task type
+        if (hintEl) {
+            if (task.name === 'pairs' || task.name === 'triplets' || task.name === 'matryoshka') {
+                hintEl.textContent = 'MNR uses in-batch negatives. GIST uses a guide model for better negatives.';
+            } else if (task.name === 'similarity') {
+                hintEl.textContent = 'CoSENT and AnglE often outperform Cosine on STS benchmarks.';
+            } else {
+                hintEl.textContent = '';
+            }
+        }
+
+        fieldEl.style.display = 'block';
+    } else if (task.name === 'tsdae') {
+        // TSDAE has a fixed loss - show it but disabled
+        selectEl.innerHTML = '<option value="">Denoising Auto-Encoder Loss</option>';
+        selectEl.disabled = true;
+
+        if (hintEl) {
+            hintEl.textContent = 'TSDAE uses unsupervised denoising to learn embeddings from unlabeled text.';
+        }
+
+        fieldEl.style.display = 'block';
+    } else {
+        // Hide for other tasks without loss options
+        fieldEl.style.display = 'none';
+    }
+}
+
+// Format loss variant name for display
+function formatLossLabel(loss) {
+    const labels = {
+        'mnr': 'MNR (Multiple Negatives Ranking)',
+        'mnr_symmetric': 'MNR Symmetric',
+        'gist': 'GIST (Guided In-Sample Triplet)',
+        'cached_mnr': 'Cached MNR',
+        'cached_gist': 'Cached GIST',
+        'cosine': 'Cosine Similarity',
+        'cosent': 'CoSENT',
+        'angle': 'AnglE',
+    };
+    return labels[loss] || loss.toUpperCase();
 }
 
 // Helper to set input value if element exists
@@ -292,14 +374,37 @@ function initChart() {
                 borderWidth: 2,
                 fill: true,
                 tension: 0.3,
-                pointRadius: 0,
+                pointRadius: 3,
+                pointBackgroundColor: '#22c55e',
+                pointBorderColor: '#22c55e',
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '#22c55e',
+                pointHoverBorderWidth: 2,
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false,
+            },
             plugins: {
                 legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                    displayColors: false,
+                    callbacks: {
+                        title: (items) => `Step ${items[0].label}`,
+                        label: (item) => `${item.dataset.label}: ${item.parsed.y.toFixed(4)}`,
+                    }
+                }
             },
             scales: {
                 x: {
@@ -335,12 +440,6 @@ function resetChart() {
 
 // Reset form fields to task defaults
 function resetFormToTaskDefaults() {
-    const taskSelect = document.getElementById('task');
-    const task = tasksData.find(t => t.name === taskSelect.value);
-    if (task) {
-        updateTaskUI(task);
-    }
-
     // Reset file uploads
     document.getElementById('train_filename').value = '';
     document.getElementById('eval_filename').value = '';
@@ -377,6 +476,18 @@ function resetFormToTaskDefaults() {
     document.getElementById('unsloth_enabled').checked = false;
     document.getElementById('unsloth_save_method').value = 'merged_16bit';
     document.getElementById('unsloth-fields').style.display = 'none';
+
+    // Reset Matryoshka settings
+    document.getElementById('matryoshka_enabled').checked = false;
+    document.getElementById('matryoshka_dims').value = '768,512,256,128,64';
+    document.getElementById('matryoshka-fields').style.display = 'none';
+
+    // Apply defaults for currently selected task (must be last to properly show/hide UI elements)
+    const taskSelect = document.getElementById('task');
+    const task = tasksData.find(t => t.name === taskSelect.value);
+    if (task) {
+        updateTaskUI(task);
+    }
 }
 
 // Event Listeners
@@ -488,6 +599,16 @@ function setupUnslothToggle() {
 
     unslothEnabled.addEventListener('change', () => {
         unslothFields.style.display = unslothEnabled.checked ? 'block' : 'none';
+    });
+}
+
+// Matryoshka Toggle
+function setupMatryoshkaToggle() {
+    const matryoshkaEnabled = document.getElementById('matryoshka_enabled');
+    const matryoshkaFields = document.getElementById('matryoshka-fields');
+
+    matryoshkaEnabled.addEventListener('change', () => {
+        matryoshkaFields.style.display = matryoshkaEnabled.checked ? 'block' : 'none';
     });
 }
 
@@ -685,10 +806,17 @@ async function handleTrainSubmit(e) {
     // Get selected precision mode
     const precision = document.getElementById('precision').value || 'fp32';
 
+    // Get loss variant (only if the field is visible/applicable)
+    const lossVariantField = document.getElementById('loss-variant-field');
+    const lossVariant = lossVariantField && lossVariantField.style.display !== 'none'
+        ? document.getElementById('loss_variant').value
+        : null;
+
     const formData = {
         project_name: projectName,
         task: document.getElementById('task').value,
         base_model: document.getElementById('base_model').value,
+        loss_variant: lossVariant,
         epochs: parseInt(document.getElementById('epochs').value),
         batch_size: parseInt(document.getElementById('batch_size').value),
         learning_rate: parseFloat(document.getElementById('learning_rate').value),
@@ -719,6 +847,11 @@ async function handleTrainSubmit(e) {
         // Unsloth settings
         unsloth_enabled: document.getElementById('unsloth_enabled').checked,
         unsloth_save_method: document.getElementById('unsloth_save_method').value,
+
+        // Matryoshka settings (only send dims if enabled)
+        matryoshka_dims: document.getElementById('matryoshka_enabled').checked
+            ? document.getElementById('matryoshka_dims').value.trim()
+            : null,
 
         // Hub settings
         push_to_hub: document.getElementById('push_to_hub').checked,
@@ -935,11 +1068,32 @@ async function selectRun(runId) {
         // Load metrics from TensorBoard files for this run
         await loadMetrics(runId);
 
-        // If this run is active, show progress bar and start polling
+        // Show progress bar for all runs
+        document.getElementById('progress-container').style.display = 'block';
+
+        // Update header display based on run status
         if (run.status === 'running') {
-            document.getElementById('progress-container').style.display = 'block';
             if (pollingRunId !== runId) {
                 startPolling(runId);
+            }
+        } else {
+            // For finished/stopped/error runs, show final state
+            document.getElementById('current-eta').textContent = run.status === 'completed' ? '0' : '--';
+
+            // Show final loss from metrics if available
+            const lossData = metricsData['loss'] || metricsData['eval_loss'];
+            if (lossData && lossData.length > 0) {
+                const finalLoss = lossData[lossData.length - 1];
+                if (finalLoss && finalLoss.value !== null) {
+                    document.getElementById('current-loss').textContent = finalLoss.value.toFixed(4);
+                }
+            }
+
+            // For completed runs, show 100% progress
+            if (run.status === 'completed') {
+                document.getElementById('progress-fill').style.width = '100%';
+                document.getElementById('progress-pct').textContent = '100%';
+                document.getElementById('progress-speed').textContent = 'Complete';
             }
         }
     } catch (error) {
@@ -979,6 +1133,7 @@ function showRunSummary(run) {
     document.getElementById('summary-status').className = `status-chip small ${run.status}`;
 
     document.getElementById('sum-task').textContent = config.task || '--';
+    document.getElementById('sum-loss').textContent = config.loss_variant || 'default';
     document.getElementById('sum-model').textContent = config.base_model?.split('/').pop() || '--';
 
     // Show data source
@@ -992,10 +1147,33 @@ function showRunSummary(run) {
 
     document.getElementById('sum-epochs').textContent = config.epochs || '--';
     document.getElementById('sum-batch').textContent = config.batch_size || '--';
+    document.getElementById('sum-lr').textContent = config.learning_rate || '--';
 
-    // Show/hide stop button
+    // Show LoRA info if enabled
+    const loraRow = document.getElementById('sum-lora-row');
+    if (config.lora_enabled) {
+        loraRow.style.display = 'flex';
+        document.getElementById('sum-lora').textContent = `r=${config.lora_r}, a=${config.lora_alpha}`;
+    } else {
+        loraRow.style.display = 'none';
+    }
+
+    // Show Matryoshka info if enabled
+    const matryoshkaRow = document.getElementById('sum-matryoshka-row');
+    if (config.matryoshka_dims) {
+        matryoshkaRow.style.display = 'flex';
+        document.getElementById('sum-matryoshka').textContent = config.matryoshka_dims;
+    } else {
+        matryoshkaRow.style.display = 'none';
+    }
+
+    // Show/hide stop button based on status
     const stopBtn = document.getElementById('stop-btn');
     stopBtn.style.display = run.status === 'running' ? 'block' : 'none';
+
+    // Enable artifacts button for non-running runs (completed, stopped, error)
+    // These may have artifacts like checkpoints or partial models
+    artifactsBtn.disabled = run.status === 'running' || run.status === 'pending';
 
     projectSummary.style.display = 'block';
 }
@@ -1151,30 +1329,54 @@ async function loadMetrics(runId) {
 
 function updateMetricSelector() {
     const select = document.getElementById('metric-select');
-    const availableMetrics = Object.keys(metricsData);
+
+    // Filter to only metrics with multiple valid data points (single-point metrics are useless for charts)
+    const availableMetrics = Object.keys(metricsData).filter(key => {
+        const data = metricsData[key];
+        if (!data || data.length < 2) return false;  // Need at least 2 points for a line chart
+        return data.filter(d => d.value !== null).length >= 2;
+    });
 
     if (availableMetrics.length === 0) {
         select.innerHTML = '<option value="loss">Loss</option>';
         return;
     }
 
-    // Sort metrics: loss first, then alphabetically
+    // Sort metrics: exact 'loss' first, eval_loss second, then alphabetically
     availableMetrics.sort((a, b) => {
-        if (a === 'loss') return -1;
-        if (b === 'loss') return 1;
+        const aLower = a.toLowerCase();
+        const bLower = b.toLowerCase();
+        // Exact 'loss' first (case-insensitive)
+        if (aLower === 'loss') return -1;
+        if (bLower === 'loss') return 1;
+        // eval_loss second
+        if (aLower === 'eval_loss') return -1;
+        if (bLower === 'eval_loss') return 1;
+        // Push flos/runtime/samples_per_second to the end (less useful metrics)
+        const aIsUtility = aLower.includes('flos') || aLower.includes('runtime') || aLower.includes('per_second');
+        const bIsUtility = bLower.includes('flos') || bLower.includes('runtime') || bLower.includes('per_second');
+        if (aIsUtility && !bIsUtility) return 1;
+        if (bIsUtility && !aIsUtility) return -1;
+        // Then alphabetically
         return a.localeCompare(b);
     });
 
     select.innerHTML = availableMetrics.map(metric => {
         const label = metric.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        return `<option value="${metric}" ${metric === currentMetric ? 'selected' : ''}>${label}</option>`;
+        return `<option value="${metric}">${label}</option>`;
     }).join('');
 
-    // If current metric not in list, select first one
-    if (!availableMetrics.includes(currentMetric)) {
-        currentMetric = availableMetrics[0] || 'loss';
-        select.value = currentMetric;
+    // Find the best metric to select (prefer exact 'loss')
+    let selectedMetric = currentMetric;
+    if (!availableMetrics.includes(selectedMetric)) {
+        // Try to find exact 'loss' (case-insensitive)
+        selectedMetric = availableMetrics.find(m => m.toLowerCase() === 'loss')
+            || availableMetrics.find(m => m.toLowerCase() === 'eval_loss')
+            || availableMetrics[0];
     }
+
+    currentMetric = selectedMetric;
+    select.value = currentMetric;
 }
 
 function updateChartWithMetric(metric) {
@@ -1189,4 +1391,91 @@ function updateChartWithMetric(metric) {
     chart.data.datasets[0].label = metric.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     chart.update();
     chartPlaceholder.style.display = 'none';
+}
+
+// Artifacts Modal
+function setupArtifactsModal() {
+    // Open artifacts modal
+    artifactsBtn.addEventListener('click', async () => {
+        if (!selectedRunId || artifactsBtn.disabled) return;
+        await loadArtifacts(selectedRunId);
+        artifactsModal.style.display = 'flex';
+    });
+
+    // Close artifacts modal
+    closeArtifactsModal.addEventListener('click', () => {
+        artifactsModal.style.display = 'none';
+    });
+
+    // Close on backdrop click
+    artifactsModal.addEventListener('click', (e) => {
+        if (e.target === artifactsModal) {
+            artifactsModal.style.display = 'none';
+        }
+    });
+
+    // Close on escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && artifactsModal.style.display === 'flex') {
+            artifactsModal.style.display = 'none';
+        }
+    });
+}
+
+async function loadArtifacts(runId) {
+    const listEl = document.getElementById('artifacts-list');
+    const pathEl = document.getElementById('artifacts-path');
+
+    try {
+        const response = await fetch(`/runs/${runId}/artifacts`);
+        const data = await response.json();
+
+        if (data.artifacts.length === 0) {
+            listEl.innerHTML = '<div class="artifacts-empty">No artifacts available</div>';
+            pathEl.textContent = '';
+            return;
+        }
+
+        listEl.innerHTML = data.artifacts.map(artifact => `
+            <div class="artifact-item">
+                <div class="artifact-info">
+                    <span class="artifact-name">${artifact.label}</span>
+                    <div class="artifact-meta">
+                        <span class="artifact-category">${artifact.category}</span>
+                        <span>${formatFileSize(artifact.size)}</span>
+                    </div>
+                </div>
+                <button class="artifact-download" onclick="copyArtifactPath('${artifact.path.replace(/'/g, "\\'")}')">
+                    Copy Path
+                </button>
+            </div>
+        `).join('');
+
+        pathEl.textContent = data.output_dir;
+    } catch (error) {
+        console.error('Failed to load artifacts:', error);
+        listEl.innerHTML = '<div class="artifacts-empty">Failed to load artifacts</div>';
+    }
+}
+
+function copyArtifactPath(path) {
+    navigator.clipboard.writeText(path).then(() => {
+        // Brief visual feedback
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 1000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+    });
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }

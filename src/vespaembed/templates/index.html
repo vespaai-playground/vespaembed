@@ -37,6 +37,10 @@
                         <span class="summary-val" id="sum-task">--</span>
                     </div>
                     <div class="summary-row">
+                        <span class="summary-key">Loss</span>
+                        <span class="summary-val" id="sum-loss">--</span>
+                    </div>
+                    <div class="summary-row">
                         <span class="summary-key">Model</span>
                         <span class="summary-val" id="sum-model">--</span>
                     </div>
@@ -49,11 +53,31 @@
                         <span class="summary-val" id="sum-epochs">--</span>
                     </div>
                     <div class="summary-row">
-                        <span class="summary-key">Batch Size</span>
+                        <span class="summary-key">Batch</span>
                         <span class="summary-val" id="sum-batch">--</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-key">LR</span>
+                        <span class="summary-val" id="sum-lr">--</span>
+                    </div>
+                    <div class="summary-row" id="sum-lora-row" style="display: none;">
+                        <span class="summary-key">LoRA</span>
+                        <span class="summary-val" id="sum-lora">--</span>
+                    </div>
+                    <div class="summary-row" id="sum-matryoshka-row" style="display: none;">
+                        <span class="summary-key">Matryoshka</span>
+                        <span class="summary-val" id="sum-matryoshka">--</span>
                     </div>
                 </div>
                 <div class="summary-actions">
+                    <button type="button" id="artifacts-btn" class="btn-ghost" disabled>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Artifacts
+                    </button>
                     <button type="button" id="stop-btn" class="btn-danger" style="display: none;">
                         <span class="btn-text">Stop</span>
                         <span class="btn-spinner"></span>
@@ -276,6 +300,17 @@
 
                 <!-- Step 2: Training Parameters -->
                 <div class="wizard-content" id="wizard-step-2" style="display: none;">
+                    <!-- Loss Function (shown when task has loss options) -->
+                    <div class="form-section" id="loss-variant-field" style="display: none;">
+                        <label class="section-label">Loss Function</label>
+                        <div class="form-field">
+                            <select id="loss_variant" name="loss_variant">
+                                <!-- Options populated based on task -->
+                            </select>
+                            <span class="field-hint" id="loss-variant-hint"></span>
+                        </div>
+                    </div>
+
                     <!-- Basic Training Parameters -->
                     <div class="form-section">
                         <label class="section-label">Training</label>
@@ -292,6 +327,10 @@
                                 <label>Learning Rate</label>
                                 <input type="text" id="learning_rate" name="learning_rate" value="2e-5">
                             </div>
+                            <div class="form-field compact">
+                                <label>Warmup Ratio</label>
+                                <input type="text" id="warmup_ratio" name="warmup_ratio" value="0.1">
+                            </div>
                         </div>
                         <div class="form-row">
                             <div class="form-field compact">
@@ -306,14 +345,27 @@
                                 <label>Max Seq Length</label>
                                 <input type="number" id="max_seq_length" name="max_seq_length" placeholder="auto" min="1">
                             </div>
-                            <div class="form-field compact">
-                                <label>Warmup Ratio</label>
-                                <input type="text" id="warmup_ratio" name="warmup_ratio" value="0.1">
-                            </div>
                         </div>
                         <div class="checkbox-row" style="margin-top: var(--space-xs);">
                             <input type="checkbox" id="gradient_checkpointing" name="gradient_checkpointing">
                             <label for="gradient_checkpointing">Gradient Checkpointing (saves VRAM)</label>
+                        </div>
+                    </div>
+
+                    <!-- Matryoshka (shown for compatible tasks) -->
+                    <div class="form-section" id="matryoshka-section">
+                        <label class="section-label">Matryoshka Embeddings</label>
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="matryoshka_enabled" name="matryoshka_enabled">
+                            <label for="matryoshka_enabled">Enable Matryoshka (multi-dimensional embeddings)</label>
+                        </div>
+                        <div id="matryoshka-fields" style="display: none; margin-top: var(--space-xs);">
+                            <div class="form-field">
+                                <label>Dimensions</label>
+                                <input type="text" id="matryoshka_dims" name="matryoshka_dims"
+                                       value="768,512,256,128,64" placeholder="768,512,256,128,64">
+                                <span class="field-hint">Comma-separated dimensions (largest to smallest)</span>
+                            </div>
                         </div>
                     </div>
 
@@ -444,6 +496,24 @@
                     <button type="submit" id="start-btn" class="btn-primary" style="display: none;">Start Training</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Artifacts Modal -->
+    <div id="artifacts-modal" class="modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span>Artifacts</span>
+                <button class="close-modal" id="close-artifacts-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="artifacts-list" class="artifacts-list">
+                    <div class="artifacts-empty">No artifacts available</div>
+                </div>
+                <div class="artifacts-footer">
+                    <span class="artifacts-path" id="artifacts-path"></span>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -2,7 +2,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from vespaembed.enums import TaskType
+from vespaembed.enums import LossVariant, TaskType
 
 
 class DataConfig(BaseModel):
@@ -70,6 +70,12 @@ class TrainingConfig(BaseModel):
     task: TaskType = Field(..., description="Training task type")
     base_model: str = Field(..., description="Base model name or path")
     data: DataConfig = Field(..., description="Data configuration")
+
+    # Loss variant (optional - uses task default if not specified)
+    loss_variant: Optional[LossVariant] = Field(
+        None,
+        description="Loss function variant (task-specific, uses default if not specified)",
+    )
 
     # Optional
     training: TrainingHyperparameters = Field(

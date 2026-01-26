@@ -27,6 +27,8 @@ def train_command_factory(args: Namespace) -> "TrainCommand":
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         unsloth=args.unsloth,
+        matryoshka=args.matryoshka,
+        matryoshka_dims=args.matryoshka_dims,
         subset=args.subset,
         split=args.split,
     )
@@ -62,7 +64,7 @@ class TrainCommand(BaseCommand):
             "--task",
             type=str,
             default=None,
-            choices=["mnr", "triplet", "contrastive", "sts", "nli", "tsdae", "matryoshka"],
+            choices=["pairs", "triplets", "similarity", "tsdae"],
             help="Training task type",
         )
         train_parser.add_argument(
@@ -108,6 +110,17 @@ class TrainCommand(BaseCommand):
             action="store_true",
             help="Use Unsloth for faster training",
         )
+        train_parser.add_argument(
+            "--matryoshka",
+            action="store_true",
+            help="Enable Matryoshka embeddings (multi-dimensional)",
+        )
+        train_parser.add_argument(
+            "--matryoshka-dims",
+            type=str,
+            default="768,512,256,128,64",
+            help="Matryoshka dimensions, comma-separated (default: 768,512,256,128,64)",
+        )
 
         # HuggingFace dataset options
         train_parser.add_argument(
@@ -137,6 +150,8 @@ class TrainCommand(BaseCommand):
         batch_size: int = 32,
         learning_rate: float = 2e-5,
         unsloth: bool = False,
+        matryoshka: bool = False,
+        matryoshka_dims: str = "768,512,256,128,64",
         subset: Optional[str] = None,
         split: Optional[str] = None,
     ):
@@ -150,6 +165,8 @@ class TrainCommand(BaseCommand):
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.unsloth = unsloth
+        self.matryoshka = matryoshka
+        self.matryoshka_dims = matryoshka_dims
         self.subset = subset
         self.split = split
 
@@ -193,6 +210,14 @@ class TrainCommand(BaseCommand):
             logger.info(f"Project: {project_name}")
             logger.info(f"Output: {output_dir}")
 
+            # Parse matryoshka dimensions if enabled
+            matryoshka_dims = None
+            if self.matryoshka:
+                if self.task == "tsdae":
+                    raise ValueError("Matryoshka is not supported with TSDAE task")
+                matryoshka_dims = [int(d.strip()) for d in self.matryoshka_dims.split(",") if d.strip()]
+                logger.info(f"Matryoshka enabled with dimensions: {matryoshka_dims}")
+
             # Build config from CLI args
             config = TrainingConfig(
                 task=self.task,
@@ -212,6 +237,7 @@ class TrainCommand(BaseCommand):
                     "dir": str(output_dir),
                 },
                 unsloth=self.unsloth,
+                matryoshka_dims=matryoshka_dims,
             )
 
         # Create and run trainer

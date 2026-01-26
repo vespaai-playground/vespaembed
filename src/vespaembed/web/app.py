@@ -133,9 +133,7 @@ class TrainRequest(BaseModel):
     lora_r: int = 64
     lora_alpha: int = 128
     lora_dropout: float = 0.1
-    lora_target_modules: str = Field(
-        "query, key, value, dense", description="Comma-separated list of target modules"
-    )
+    lora_target_modules: str = Field("query, key, value, dense", description="Comma-separated list of target modules")
 
     # Model configuration
     max_seq_length: Optional[int] = None  # Auto-detect from model if not specified
@@ -152,6 +150,9 @@ class TrainRequest(BaseModel):
     # Task-specific parameters
     matryoshka_dims: Optional[str] = Field(
         None, description="Matryoshka dimensions as comma-separated string (e.g., '768,512,256,128')"
+    )
+    loss_variant: Optional[str] = Field(
+        None, description="Loss function variant (task-specific, uses default if not specified)"
     )
 
     @field_validator("project_name")
@@ -520,3 +521,81 @@ async def get_run_metrics(run_id: int):
     except Exception as e:
         # If tensorboard parsing fails, return empty metrics
         return {"metrics": {}, "error": str(e)}
+
+
+@app.get("/runs/{run_id}/artifacts")
+async def get_run_artifacts(run_id: int):
+    """Get list of downloadable artifacts for a training run."""
+    run = get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    output_dir = Path(run["output_dir"])
+    if not output_dir.exists():
+        return {"artifacts": []}
+
+    artifacts = []
+
+    # Check for final model
+    final_path = output_dir / "final"
+    if final_path.exists() and final_path.is_dir():
+        # Get total size of final directory
+        total_size = sum(f.stat().st_size for f in final_path.rglob("*") if f.is_file())
+        artifacts.append(
+            {
+                "name": "final",
+                "label": "Final Model",
+                "category": "model",
+                "path": str(final_path),
+                "size": total_size,
+                "is_directory": True,
+            }
+        )
+
+    # Check for config file
+    config_files = list(output_dir.glob("*.json"))
+    for cf in config_files:
+        if cf.name in ["config.json", "training_config.json"]:
+            artifacts.append(
+                {
+                    "name": cf.name,
+                    "label": "Training Config",
+                    "category": "config",
+                    "path": str(cf),
+                    "size": cf.stat().st_size,
+                    "is_directory": False,
+                }
+            )
+
+    # Check for checkpoints
+    checkpoints = sorted(output_dir.glob("checkpoint-*"))
+    for ckpt in checkpoints[:3]:  # Limit to 3 most recent
+        if ckpt.is_dir():
+            total_size = sum(f.stat().st_size for f in ckpt.rglob("*") if f.is_file())
+            artifacts.append(
+                {
+                    "name": ckpt.name,
+                    "label": f"Checkpoint ({ckpt.name})",
+                    "category": "checkpoint",
+                    "path": str(ckpt),
+                    "size": total_size,
+                    "is_directory": True,
+                }
+            )
+
+    # Check for logs
+    logs_path = output_dir / "logs"
+    if logs_path.exists():
+        total_size = sum(f.stat().st_size for f in logs_path.rglob("*") if f.is_file())
+        artifacts.append(
+            {
+                "name": "logs",
+                "label": "TensorBoard Logs",
+                "category": "logs",
+                "path": str(logs_path),
+                "size": total_size,
+                "is_directory": True,
+            }
+        )
+
+    return {"artifacts": artifacts, "output_dir": str(output_dir)}

@@ -142,6 +142,7 @@ class TrainingWorker:
                 max_seq_length=self.config.get("max_seq_length"),  # None = auto-detect
                 gradient_checkpointing=self.config.get("gradient_checkpointing", False),
                 matryoshka_dims=matryoshka_dims,
+                loss_variant=self.config.get("loss_variant"),
             )
 
             # Create trainer with progress callback

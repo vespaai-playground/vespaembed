@@ -196,11 +196,11 @@ class TestTrainingConfig:
     def test_minimal_config(self):
         """Test minimal training config."""
         config = TrainingConfig(
-            task="mnr",
+            task="pairs",
             base_model="sentence-transformers/all-MiniLM-L6-v2",
             data=DataConfig(train="train.csv"),
         )
-        assert config.task == "mnr"
+        assert config.task == "pairs"
         assert config.base_model == "sentence-transformers/all-MiniLM-L6-v2"
         assert config.data.train == "train.csv"
         assert config.unsloth.enabled is False
@@ -208,6 +208,7 @@ class TestTrainingConfig:
         assert config.max_seq_length is None  # Auto-detect by default
         assert config.gradient_checkpointing is False  # Disabled by default
         assert config.matryoshka_dims is None
+        assert config.loss_variant is None  # Uses task default
 
     def test_full_config(self):
         """Test full training config."""
@@ -234,10 +235,21 @@ class TestTrainingConfig:
         assert config.gradient_checkpointing is True
         assert config.matryoshka_dims == [512, 256, 128]
 
+    def test_config_with_loss_variant(self):
+        """Test config with loss variant specified."""
+        config = TrainingConfig(
+            task="pairs",
+            base_model="model",
+            data=DataConfig(train="train.csv"),
+            loss_variant="mnr_symmetric",
+        )
+        assert config.task == "pairs"
+        assert config.loss_variant == "mnr_symmetric"
+
     def test_nested_dict_config(self):
         """Test config with nested dicts (as from YAML)."""
         config = TrainingConfig(
-            task="mnr",
+            task="pairs",
             base_model="model",
             data={"train": "train.csv", "eval": "eval.csv"},
             training={"epochs": 10},
@@ -255,26 +267,26 @@ class TestLoadConfigFromDict:
     def test_load_minimal(self):
         """Test loading minimal config from dict."""
         data = {
-            "task": "mnr",
+            "task": "pairs",
             "base_model": "model",
             "data": {"train": "train.csv"},
         }
         config = load_config_from_dict(data)
-        assert config.task == "mnr"
+        assert config.task == "pairs"
         assert config.base_model == "model"
         assert config.data.train == "train.csv"
 
     def test_load_full(self):
         """Test loading full config from dict."""
         data = {
-            "task": "triplet",
+            "task": "similarity",
             "base_model": "model",
             "data": {"train": "train.csv", "eval": "eval.csv"},
             "training": {"epochs": 5, "batch_size": 64},
             "output": {"dir": "/output"},
         }
         config = load_config_from_dict(data)
-        assert config.task == "triplet"
+        assert config.task == "similarity"
         assert config.training.epochs == 5
         assert config.training.batch_size == 64
 
@@ -285,7 +297,7 @@ class TestLoadConfigFromYaml:
     def test_load_yaml(self):
         """Test loading config from YAML file."""
         yaml_content = """
-task: mnr
+task: pairs
 base_model: sentence-transformers/all-MiniLM-L6-v2
 data:
   train: train.csv
@@ -301,7 +313,7 @@ output:
             f.flush()
             config = load_config_from_yaml(f.name)
 
-        assert config.task == "mnr"
+        assert config.task == "pairs"
         assert config.base_model == "sentence-transformers/all-MiniLM-L6-v2"
         assert config.data.train == "train.csv"
         assert config.data.eval == "eval.csv"

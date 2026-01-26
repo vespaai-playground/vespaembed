@@ -115,7 +115,6 @@ class VespaEmbedTrainer:
         4. Unsloth + LoRA: FastSentenceTransformer with LoRA via get_peft_model
         """
         use_unsloth = self.config.unsloth.enabled
-        use_lora = self.config.lora.enabled
 
         if use_unsloth:
             return self._load_unsloth_model()
@@ -225,11 +224,18 @@ class VespaEmbedTrainer:
 
         # 2. Get task (pass task-specific params if applicable)
         task_cls = Registry.get_task(self.config.task)
-        if self.config.task == "matryoshka" and self.config.matryoshka_dims:
-            self.task = task_cls(matryoshka_dims=self.config.matryoshka_dims)
+        # Handle loss_variant as either enum or string
+        loss_variant = self.config.loss_variant
+        if loss_variant is not None:
+            loss_variant = loss_variant.value if hasattr(loss_variant, "value") else loss_variant
+
+        if loss_variant:
+            self.task = task_cls(loss_variant=loss_variant)
         else:
             self.task = task_cls()
-        logger.info(f"Using task: {self.task.name} - {self.task.description}")
+
+        loss_info = f" (loss: {self.task.loss_variant})" if self.task.loss_variant else ""
+        logger.info(f"Using task: {self.task.name} - {self.task.description}{loss_info}")
 
         # 3. Load and prepare training data
         logger.info(f"Loading training data: {self.config.data.train}")
@@ -260,8 +266,10 @@ class VespaEmbedTrainer:
         # 5. Create loss function
         loss = self.task.get_loss(self.model)
 
-        # Wrap with MatryoshkaLoss if dimensions specified (but not for matryoshka task which handles it internally)
-        if self.config.matryoshka_dims and self.config.task != "matryoshka":
+        # Wrap with MatryoshkaLoss if dimensions specified (not supported for TSDAE)
+        if self.config.matryoshka_dims:
+            if self.config.task == "tsdae":
+                raise ValueError("Matryoshka is not supported with TSDAE (uses decoder architecture)")
             from sentence_transformers.losses import MatryoshkaLoss
 
             logger.info(f"Wrapping with MatryoshkaLoss: {self.config.matryoshka_dims}")

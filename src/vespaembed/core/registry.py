@@ -19,21 +19,12 @@ DEFAULT_HYPERPARAMETERS = {
     "gradient_accumulation_steps": 1,
 }
 
-# Task-specific parameter definitions
-TASK_SPECIFIC_PARAMS = {
-    "matryoshka": {
-        "matryoshka_dims": {
-            "type": "text",
-            "label": "Matryoshka Dimensions",
-            "description": "Comma-separated embedding dimensions (e.g., 768,512,256,128,64)",
-            "default": "768,512,256,128,64",
-        }
-    }
-}
+# Task-specific parameter definitions (currently none - matryoshka is now a global option)
+TASK_SPECIFIC_PARAMS = {}
 
 # Sample data for each task
 TASK_SAMPLE_DATA = {
-    "mnr": [
+    "pairs": [
         {
             "anchor": "What is machine learning?",
             "positive": "Machine learning is a subset of AI that enables systems to learn from data.",
@@ -43,37 +34,25 @@ TASK_SAMPLE_DATA = {
             "positive": "Photosynthesis converts sunlight into chemical energy in plants.",
         },
     ],
-    "triplet": [
+    "triplets": [
         {
             "anchor": "What is Python?",
-            "positive": "Python is a programming language",
-            "negative": "A python is a large snake",
+            "positive": "Python is a programming language known for its simple syntax.",
+            "negative": "A python is a large non-venomous snake.",
         },
         {
             "anchor": "Apple stock price",
-            "positive": "AAPL is trading at $150",
-            "negative": "Apples are a healthy fruit",
+            "positive": "AAPL shares are trading on NASDAQ.",
+            "negative": "Apples are nutritious fruits that grow on trees.",
         },
     ],
-    "contrastive": [
-        {"sentence1": "The cat sat on the mat", "sentence2": "A feline rested on the rug", "label": 1},
-        {"sentence1": "I love programming", "sentence2": "The weather is sunny", "label": 0},
-    ],
-    "sts": [
+    "similarity": [
         {"sentence1": "A man is playing guitar", "sentence2": "A person plays a musical instrument", "score": 0.85},
         {"sentence1": "A dog is running", "sentence2": "The cat sleeps peacefully", "score": 0.12},
-    ],
-    "nli": [
-        {"sentence1": "A man is eating pizza", "sentence2": "A man is eating food", "label": 0},
-        {"sentence1": "A woman is playing guitar", "sentence2": "A man is playing piano", "label": 2},
     ],
     "tsdae": [
         {"text": "Machine learning is transforming how we analyze data."},
         {"text": "Natural language processing enables computers to understand human language."},
-    ],
-    "matryoshka": [
-        {"anchor": "What is deep learning?", "positive": "Deep learning uses neural networks with many layers."},
-        {"anchor": "Explain quantum computing", "positive": "Quantum computing uses quantum bits for computation."},
     ],
 }
 
@@ -147,7 +126,10 @@ class Registry:
             "name": name,
             "description": getattr(task_cls, "description", ""),
             "expected_columns": getattr(task_cls, "expected_columns", []),
+            "optional_columns": getattr(task_cls, "optional_columns", []),
             "column_aliases": getattr(task_cls, "column_aliases", {}),
+            "loss_options": getattr(task_cls, "loss_options", []),
+            "default_loss": getattr(task_cls, "default_loss", ""),
             "hyperparameters": DEFAULT_HYPERPARAMETERS.copy(),
             "task_specific_params": TASK_SPECIFIC_PARAMS.get(name, {}),
             "sample_data": TASK_SAMPLE_DATA.get(name, []),

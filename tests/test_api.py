@@ -30,16 +30,13 @@ class TestTasksAPI:
 
         tasks = response.json()
         assert isinstance(tasks, list)
-        assert len(tasks) == 7  # mnr, triplet, contrastive, sts, nli, tsdae, matryoshka
+        assert len(tasks) == 4  # pairs, triplets, similarity, tsdae
 
         task_names = [t["name"] for t in tasks]
-        assert "mnr" in task_names
-        assert "triplet" in task_names
-        assert "contrastive" in task_names
-        assert "sts" in task_names
-        assert "nli" in task_names
+        assert "pairs" in task_names
+        assert "triplets" in task_names
+        assert "similarity" in task_names
         assert "tsdae" in task_names
-        assert "matryoshka" in task_names
 
     def test_task_has_required_fields(self, client):
         """Test that each task has all required fields."""
@@ -62,11 +59,11 @@ class TestTasksAPI:
 
     def test_get_single_task(self, client):
         """Test getting a single task by name."""
-        response = client.get("/api/tasks/mnr")
+        response = client.get("/api/tasks/pairs")
         assert response.status_code == 200
 
         task = response.json()
-        assert task["name"] == "mnr"
+        assert task["name"] == "pairs"
         assert task["expected_columns"] == ["anchor", "positive"]
         assert "hyperparameters" in task
         assert "sample_data" in task
@@ -76,35 +73,33 @@ class TestTasksAPI:
         response = client.get("/api/tasks/nonexistent")
         assert response.status_code == 404
 
-    def test_mnr_task_columns(self, client):
-        """Test MNR task has correct columns."""
-        response = client.get("/api/tasks/mnr")
+    def test_pairs_task_columns(self, client):
+        """Test pairs task has correct columns."""
+        response = client.get("/api/tasks/pairs")
         task = response.json()
         assert task["expected_columns"] == ["anchor", "positive"]
 
-    def test_triplet_task_columns(self, client):
-        """Test triplet task has correct columns."""
-        response = client.get("/api/tasks/triplet")
+    def test_triplets_task_columns(self, client):
+        """Test triplets task has correct columns."""
+        response = client.get("/api/tasks/triplets")
         task = response.json()
         assert task["expected_columns"] == ["anchor", "positive", "negative"]
 
-    def test_sts_task_columns(self, client):
-        """Test STS task has correct columns."""
-        response = client.get("/api/tasks/sts")
+    def test_triplets_task_has_loss_options(self, client):
+        """Test triplets task has loss variant options."""
+        response = client.get("/api/tasks/triplets")
+        task = response.json()
+
+        assert "loss_options" in task
+        assert "mnr" in task["loss_options"]
+        assert "mnr_symmetric" in task["loss_options"]
+        assert task["default_loss"] == "mnr"
+
+    def test_similarity_task_columns(self, client):
+        """Test similarity task has correct columns."""
+        response = client.get("/api/tasks/similarity")
         task = response.json()
         assert task["expected_columns"] == ["sentence1", "sentence2", "score"]
-
-    def test_contrastive_task_columns(self, client):
-        """Test contrastive task has correct columns."""
-        response = client.get("/api/tasks/contrastive")
-        task = response.json()
-        assert task["expected_columns"] == ["sentence1", "sentence2", "label"]
-
-    def test_nli_task_columns(self, client):
-        """Test NLI task has correct columns."""
-        response = client.get("/api/tasks/nli")
-        task = response.json()
-        assert task["expected_columns"] == ["sentence1", "sentence2", "label"]
 
     def test_tsdae_task_columns(self, client):
         """Test TSDAE task has correct columns."""
@@ -112,19 +107,31 @@ class TestTasksAPI:
         task = response.json()
         assert task["expected_columns"] == ["text"]
 
-    def test_matryoshka_task_has_specific_params(self, client):
-        """Test matryoshka task has task-specific parameters."""
-        response = client.get("/api/tasks/matryoshka")
+    def test_pairs_task_has_loss_options(self, client):
+        """Test pairs task has loss variant options."""
+        response = client.get("/api/tasks/pairs")
         task = response.json()
 
-        assert "matryoshka_dims" in task["task_specific_params"]
-        param = task["task_specific_params"]["matryoshka_dims"]
-        assert param["type"] == "text"
-        assert param["default"] == "768,512,256,128,64"
+        assert "loss_options" in task
+        assert "mnr" in task["loss_options"]
+        assert "mnr_symmetric" in task["loss_options"]
+        assert "gist" in task["loss_options"]
+        assert task["default_loss"] == "mnr"
+
+    def test_similarity_task_has_loss_options(self, client):
+        """Test similarity task has loss variant options."""
+        response = client.get("/api/tasks/similarity")
+        task = response.json()
+
+        assert "loss_options" in task
+        assert "cosine" in task["loss_options"]
+        assert "cosent" in task["loss_options"]
+        assert "angle" in task["loss_options"]
+        assert task["default_loss"] == "cosine"
 
     def test_hyperparameters_have_defaults(self, client):
         """Test that hyperparameters have sensible defaults."""
-        response = client.get("/api/tasks/mnr")
+        response = client.get("/api/tasks/pairs")
         task = response.json()
         hyper = task["hyperparameters"]
 
@@ -256,7 +263,7 @@ class TestTrainEndpoint:
             "/train",
             json={
                 "project_name": "test-project",
-                "task": "mnr",
+                "task": "pairs",
                 "base_model": "sentence-transformers/all-MiniLM-L6-v2",
             },
         )
@@ -270,7 +277,7 @@ class TestTrainEndpoint:
             "/train",
             json={
                 "project_name": "test-project",
-                "task": "mnr",
+                "task": "pairs",
                 "base_model": "sentence-transformers/all-MiniLM-L6-v2",
                 "train_filename": "/some/file.csv",
                 "hf_dataset": "some/dataset",
@@ -286,7 +293,7 @@ class TestTrainEndpoint:
             "/train",
             json={
                 "project_name": "invalid name with spaces",
-                "task": "mnr",
+                "task": "pairs",
                 "base_model": "sentence-transformers/all-MiniLM-L6-v2",
                 "hf_dataset": "some/dataset",
             },
@@ -300,7 +307,7 @@ class TestTrainEndpoint:
             "/train",
             json={
                 "project_name": "test-project",
-                "task": "mnr",
+                "task": "pairs",
                 "base_model": "sentence-transformers/all-MiniLM-L6-v2",
                 "hf_dataset": "sentence-transformers/all-nli",
                 "hf_subset": "triplet",
@@ -317,7 +324,7 @@ class TestTrainEndpoint:
             "/train",
             json={
                 "project_name": "test-project",
-                "task": "mnr",
+                "task": "pairs",
                 "base_model": "sentence-transformers/all-MiniLM-L6-v2",
                 "train_filename": "/nonexistent/file.csv",
             },

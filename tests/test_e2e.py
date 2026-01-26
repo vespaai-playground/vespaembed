@@ -1,7 +1,9 @@
 """End-to-end tests for training with all tasks and configurations.
 
 These tests verify that training works correctly with:
-- All task types
+- All task types (pairs, triplets, similarity, tsdae)
+- All loss variants for each task
+- Matryoshka option (multi-dimensional embeddings)
 - Standard SentenceTransformer training
 - SentenceTransformer + LoRA training
 
@@ -13,6 +15,8 @@ from pathlib import Path
 
 import pytest
 
+# Import tasks to register them
+import vespaembed.tasks  # noqa: F401
 from vespaembed.core.config import (
     DataConfig,
     LoraConfig,
@@ -21,9 +25,6 @@ from vespaembed.core.config import (
     TrainingHyperparameters,
 )
 from vespaembed.core.trainer import VespaEmbedTrainer
-
-# Import tasks to register them
-import vespaembed.tasks  # noqa: F401
 
 # Path to example data
 EXAMPLES_DATA_DIR = Path(__file__).parent.parent / "examples" / "data"
@@ -43,6 +44,7 @@ def assert_model_saved(final_path: Path):
     has_expected = any(ef in file_names for ef in expected_files)
     assert has_expected, f"No expected model files found. Files present: {file_names}"
 
+
 # Minimal training parameters for fast tests
 MINIMAL_TRAINING = TrainingHyperparameters(
     epochs=1,
@@ -60,13 +62,10 @@ MINIMAL_TRAINING = TrainingHyperparameters(
 
 # Task to data file mapping
 TASK_DATA_MAP = {
-    "mnr": "mnr.csv",
-    "triplet": "triplet.csv",
-    "sts": "sts.csv",
-    "contrastive": "contrastive.csv",
-    "nli": "nli.csv",
+    "pairs": "pairs.csv",
+    "triplets": "triplets.csv",
+    "similarity": "similarity.csv",
     "tsdae": "tsdae.csv",
-    "matryoshka": "mnr.csv",  # Matryoshka uses same format as MNR
 }
 
 # All tasks to test
@@ -78,6 +77,10 @@ LORA_INCOMPATIBLE_TASKS = ["tsdae"]
 
 # Tasks compatible with LoRA
 LORA_COMPATIBLE_TASKS = [t for t in ALL_TASKS if t not in LORA_INCOMPATIBLE_TASKS]
+
+# Loss variants by task (pairs and triplets share the same loss options)
+PAIRS_LOSS_VARIANTS = ["mnr", "mnr_symmetric"]  # Skip cached/gist for speed
+SIMILARITY_LOSS_VARIANTS = ["cosine", "cosent", "angle"]
 
 
 def get_data_path(task: str) -> str:
@@ -91,6 +94,7 @@ def create_config(
     output_dir: str,
     lora_enabled: bool = False,
     matryoshka_dims: list[int] = None,
+    loss_variant: str = None,
 ) -> TrainingConfig:
     """Create a minimal training config for testing."""
     config = TrainingConfig(
@@ -113,6 +117,7 @@ def create_config(
         max_seq_length=128,  # Small for faster tests
         gradient_checkpointing=False,
         matryoshka_dims=matryoshka_dims,
+        loss_variant=loss_variant,
     )
     return config
 
@@ -125,14 +130,10 @@ class TestStandardTraining:
     def test_task_training(self, task):
         """Test that training completes successfully for each task."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Special handling for matryoshka - use smaller dims for test model
-            matryoshka_dims = [384, 256, 128, 64] if task == "matryoshka" else None
-
             config = create_config(
                 task=task,
                 output_dir=tmpdir,
                 lora_enabled=False,
-                matryoshka_dims=matryoshka_dims,
             )
 
             trainer = VespaEmbedTrainer(config=config)
@@ -157,14 +158,10 @@ class TestLoRATraining:
     def test_task_lora_training(self, task):
         """Test that LoRA training completes successfully for each task."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Special handling for matryoshka - use smaller dims for test model
-            matryoshka_dims = [384, 256, 128, 64] if task == "matryoshka" else None
-
             config = create_config(
                 task=task,
                 output_dir=tmpdir,
                 lora_enabled=True,
-                matryoshka_dims=matryoshka_dims,
             )
 
             trainer = VespaEmbedTrainer(config=config)
@@ -178,6 +175,117 @@ class TestLoRATraining:
             assert_model_saved(final_path)
 
 
+class TestPairsLossVariants:
+    """Test pairs task with different loss variants."""
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("loss_variant", PAIRS_LOSS_VARIANTS)
+    def test_pairs_loss_variants(self, loss_variant):
+        """Test that pairs task works with different loss variants."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = create_config(
+                task="pairs",
+                output_dir=tmpdir,
+                lora_enabled=False,
+                loss_variant=loss_variant,
+            )
+
+            trainer = VespaEmbedTrainer(config=config)
+            model = trainer.train()
+
+            assert model is not None
+            final_path = Path(tmpdir) / "final"
+            assert_model_saved(final_path)
+
+
+class TestSimilarityLossVariants:
+    """Test similarity task with different loss variants."""
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("loss_variant", SIMILARITY_LOSS_VARIANTS)
+    def test_similarity_loss_variants(self, loss_variant):
+        """Test that similarity task works with different loss variants."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = create_config(
+                task="similarity",
+                output_dir=tmpdir,
+                lora_enabled=False,
+                loss_variant=loss_variant,
+            )
+
+            trainer = VespaEmbedTrainer(config=config)
+            model = trainer.train()
+
+            assert model is not None
+            final_path = Path(tmpdir) / "final"
+            assert_model_saved(final_path)
+
+
+class TestTripletsLossVariants:
+    """Test triplets task with different loss variants."""
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("loss_variant", PAIRS_LOSS_VARIANTS)
+    def test_triplets_loss_variants(self, loss_variant):
+        """Test that triplets task works with different loss variants."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = create_config(
+                task="triplets",
+                output_dir=tmpdir,
+                lora_enabled=False,
+                loss_variant=loss_variant,
+            )
+
+            trainer = VespaEmbedTrainer(config=config)
+            model = trainer.train()
+
+            assert model is not None
+            final_path = Path(tmpdir) / "final"
+            assert_model_saved(final_path)
+
+
+class TestMatryoshkaOption:
+    """Test Matryoshka option with different tasks and loss variants."""
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("loss_variant", PAIRS_LOSS_VARIANTS)
+    def test_matryoshka_with_pairs_loss_variants(self, loss_variant):
+        """Test that Matryoshka works with pairs task and different loss variants."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = create_config(
+                task="pairs",
+                output_dir=tmpdir,
+                lora_enabled=False,
+                matryoshka_dims=[384, 256, 128],
+                loss_variant=loss_variant,
+            )
+
+            trainer = VespaEmbedTrainer(config=config)
+            model = trainer.train()
+
+            assert model is not None
+            final_path = Path(tmpdir) / "final"
+            assert_model_saved(final_path)
+
+    @pytest.mark.slow
+    def test_matryoshka_with_similarity(self):
+        """Test that Matryoshka works with similarity task."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = create_config(
+                task="similarity",
+                output_dir=tmpdir,
+                lora_enabled=False,
+                matryoshka_dims=[384, 256, 128],
+            )
+
+            trainer = VespaEmbedTrainer(config=config)
+            model = trainer.train()
+
+            assert model is not None
+            final_path = Path(tmpdir) / "final"
+            assert_model_saved(final_path)
+
+
 class TestLoRARankVariations:
     """Test LoRA with different rank values."""
 
@@ -187,9 +295,9 @@ class TestLoRARankVariations:
         """Test that LoRA training works with different ranks."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = TrainingConfig(
-                task="mnr",
+                task="pairs",
                 base_model=TEST_MODEL,
-                data=DataConfig(train=get_data_path("mnr")),
+                data=DataConfig(train=get_data_path("pairs")),
                 training=MINIMAL_TRAINING,
                 output=OutputConfig(
                     dir=tmpdir,
@@ -230,9 +338,9 @@ class TestTargetModuleVariations:
         """Test that LoRA training works with different target modules."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = TrainingConfig(
-                task="mnr",
+                task="pairs",
                 base_model=TEST_MODEL,
-                data=DataConfig(train=get_data_path("mnr")),
+                data=DataConfig(train=get_data_path("pairs")),
                 training=MINIMAL_TRAINING,
                 output=OutputConfig(
                     dir=tmpdir,
@@ -276,9 +384,9 @@ class TestPrecisionModes:
             )
 
             config = TrainingConfig(
-                task="mnr",
+                task="pairs",
                 base_model=TEST_MODEL,
-                data=DataConfig(train=get_data_path("mnr")),
+                data=DataConfig(train=get_data_path("pairs")),
                 training=training_params,
                 output=OutputConfig(dir=tmpdir, push_to_hub=False),
                 max_seq_length=128,
@@ -291,7 +399,7 @@ class TestPrecisionModes:
 
 
 class TestMatryoshkaDimensions:
-    """Test Matryoshka training with different dimension configurations."""
+    """Test Matryoshka option with different dimension configurations."""
 
     @pytest.mark.slow
     @pytest.mark.parametrize(
@@ -303,10 +411,10 @@ class TestMatryoshkaDimensions:
         ],
     )
     def test_matryoshka_dims(self, dims):
-        """Test Matryoshka training with different dimensions."""
+        """Test Matryoshka with different dimensions on pairs task."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = create_config(
-                task="matryoshka",
+                task="pairs",
                 output_dir=tmpdir,
                 lora_enabled=False,
                 matryoshka_dims=dims,
@@ -328,9 +436,9 @@ class TestGradientCheckpointing:
         """Test standard training with gradient checkpointing."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = TrainingConfig(
-                task="mnr",
+                task="pairs",
                 base_model=TEST_MODEL,
-                data=DataConfig(train=get_data_path("mnr")),
+                data=DataConfig(train=get_data_path("pairs")),
                 training=MINIMAL_TRAINING,
                 output=OutputConfig(dir=tmpdir, push_to_hub=False),
                 gradient_checkpointing=True,
@@ -347,9 +455,9 @@ class TestGradientCheckpointing:
         """Test LoRA training with gradient checkpointing."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = TrainingConfig(
-                task="mnr",
+                task="pairs",
                 base_model=TEST_MODEL,
-                data=DataConfig(train=get_data_path("mnr")),
+                data=DataConfig(train=get_data_path("pairs")),
                 training=MINIMAL_TRAINING,
                 output=OutputConfig(dir=tmpdir, push_to_hub=False),
                 lora=LoraConfig(
@@ -374,10 +482,10 @@ class TestCombinedConfigurations:
 
     @pytest.mark.slow
     def test_lora_with_matryoshka(self):
-        """Test LoRA training combined with Matryoshka."""
+        """Test LoRA training combined with Matryoshka option."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = create_config(
-                task="matryoshka",
+                task="pairs",
                 output_dir=tmpdir,
                 lora_enabled=True,
                 matryoshka_dims=[384, 256, 128],
@@ -392,12 +500,12 @@ class TestCombinedConfigurations:
 
     @pytest.mark.slow
     def test_lora_with_gradient_checkpointing_and_matryoshka(self):
-        """Test LoRA + gradient checkpointing + Matryoshka."""
+        """Test LoRA + gradient checkpointing + Matryoshka option."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config = TrainingConfig(
-                task="matryoshka",
+                task="pairs",
                 base_model=TEST_MODEL,
-                data=DataConfig(train=get_data_path("matryoshka")),
+                data=DataConfig(train=get_data_path("pairs")),
                 training=MINIMAL_TRAINING,
                 output=OutputConfig(dir=tmpdir, push_to_hub=False),
                 lora=LoraConfig(
