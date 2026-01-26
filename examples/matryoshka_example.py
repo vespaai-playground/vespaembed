@@ -181,7 +181,7 @@ def evaluate_matryoshka_model():
         print("-" * 40)
         for i, doc in enumerate(documents):
             sim = np.dot(q_norm, d_norm[i])
-            print(f"  Doc {i+1}: {sim:.4f} - {doc[:50]}...")
+            print(f"  Doc {i + 1}: {sim:.4f} - {doc[:50]}...")
 
     # Show ranking consistency across dimensions
     print("\n\nRanking Consistency:")
