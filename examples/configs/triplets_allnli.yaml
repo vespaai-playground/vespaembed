@@ -1,0 +1,30 @@
+# Triplets task with AllNLI dataset + evaluation
+# Combined SNLI + MultiNLI for natural language inference
+# Uses 'dev' split for evaluation during training
+
+task: triplets
+base_model: sentence-transformers/all-MiniLM-L6-v2
+
+data:
+  train: sentence-transformers/all-nli  # HuggingFace dataset
+  subset: triplet                        # Dataset subset (triplet format)
+  split: train                           # Training split
+  eval_split: dev                        # Evaluation split (same dataset)
+
+loss_variant: mnr
+
+training:
+  epochs: 1
+  batch_size: 64
+  learning_rate: 2e-5
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  fp16: true
+  optimizer: adamw_torch
+  scheduler: linear
+  eval_steps: 1000                       # Evaluate every 1000 steps
+  save_steps: 1000
+  logging_steps: 100
+
+output:
+  push_to_hub: false

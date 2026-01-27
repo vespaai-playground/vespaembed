@@ -1,0 +1,39 @@
+# Triplets task with AllNLI + LoRA
+# Memory-efficient training on AllNLI dataset
+
+task: triplets
+base_model: BAAI/bge-base-en-v1.5
+
+data:
+  train: sentence-transformers/all-nli
+  subset: triplet
+  split: train
+  eval_split: dev
+
+loss_variant: mnr
+
+training:
+  epochs: 1
+  batch_size: 32
+  learning_rate: 1e-5
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  fp16: true
+  optimizer: adamw_torch
+  scheduler: cosine
+  eval_steps: 1000
+  save_steps: 1000
+  logging_steps: 100
+  gradient_accumulation_steps: 2
+
+output:
+  push_to_hub: false
+
+gradient_checkpointing: true
+
+lora:
+  enabled: true
+  r: 32
+  alpha: 64
+  dropout: 0.1
+  target_modules: [query, key, value, dense]

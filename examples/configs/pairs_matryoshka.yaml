@@ -1,0 +1,28 @@
+# Pairs task with Matryoshka embeddings
+# Train multi-dimensional embeddings for flexible retrieval
+# Allows using smaller dimensions at inference for speed
+
+task: pairs
+base_model: sentence-transformers/all-MiniLM-L6-v2
+
+data:
+  train: ./examples/data/pairs.csv
+
+training:
+  epochs: 3
+  batch_size: 32
+  learning_rate: 2e-5
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  fp16: true
+  optimizer: adamw_torch
+  scheduler: cosine  # Cosine often works well with Matryoshka
+  eval_steps: 500
+  save_steps: 500
+  logging_steps: 100
+
+output:
+  push_to_hub: false
+
+# Matryoshka dimensions (largest to smallest)
+matryoshka_dims: [384, 256, 128, 64]

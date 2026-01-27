@@ -1,0 +1,36 @@
+# Pairs task with BGE model + LoRA
+# Fine-tune a larger BGE model efficiently with LoRA
+
+task: pairs
+base_model: BAAI/bge-base-en-v1.5
+
+data:
+  train: ./examples/data/pairs.csv
+
+loss_variant: mnr
+
+training:
+  epochs: 3
+  batch_size: 16  # Smaller batch for larger model
+  learning_rate: 1e-5  # Lower LR for larger model
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  fp16: true
+  optimizer: adamw_torch
+  scheduler: cosine
+  eval_steps: 500
+  save_steps: 500
+  logging_steps: 100
+  gradient_accumulation_steps: 2  # Effective batch size = 32
+
+output:
+  push_to_hub: false
+
+gradient_checkpointing: true  # Save VRAM for larger model
+
+lora:
+  enabled: true
+  r: 32
+  alpha: 64
+  dropout: 0.1
+  target_modules: [query, key, value, dense]

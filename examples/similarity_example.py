@@ -1,18 +1,23 @@
 """
-Semantic Textual Similarity (STS) Example
+Similarity Task Example
 
-STS training uses pairs of sentences with continuous similarity scores (typically 0-1)
-to learn embeddings that capture semantic similarity.
+Similarity training uses sentence pairs with continuous similarity scores (0-1).
+Ideal for semantic textual similarity (STS) tasks.
 
 Data format:
 - sentence1: First text
 - sentence2: Second text
-- score: Similarity score between 0 and 1 (or 0-5, will be normalized)
+- score: Similarity score (0-1, or 0-5 which will be normalized)
 
 Column aliases supported:
 - sentence1: sent1, text1, anchor, query
 - sentence2: sent2, text2, positive, document
-- score: label, similarity
+- score: similarity, label, sim_score
+
+Loss variants available:
+- cosine (default): Cosine Similarity Loss
+- cosent: CoSENT (often outperforms cosine)
+- angle: AnglE Loss
 """
 
 # =============================================================================
@@ -22,44 +27,41 @@ Column aliases supported:
 """
 # Train with local CSV file
 vespaembed train \\
-    --task sts \\
-    --data examples/data/sts.csv \\
+    --task similarity \\
+    --data examples/data/similarity.csv \\
     --base-model sentence-transformers/all-MiniLM-L6-v2 \\
-    --project my-sts-model \\
     --epochs 3
 
-# Train with HuggingFace STS Benchmark dataset
+# Train with HuggingFace STS Benchmark
 vespaembed train \\
-    --task sts \\
+    --task similarity \\
     --data sentence-transformers/stsb \\
     --split train \\
-    --base-model sentence-transformers/all-MiniLM-L6-v2 \\
-    --project stsb-model
+    --base-model sentence-transformers/all-MiniLM-L6-v2
 
-# Train with evaluation data
-vespaembed train \\
-    --task sts \\
-    --data examples/data/sts.csv \\
-    --eval-data examples/data/sts.csv \\
-    --base-model sentence-transformers/all-MiniLM-L6-v2 \\
-    --epochs 5 \\
-    --batch-size 16
+# Train with YAML config
+vespaembed train --config examples/configs/similarity_stsb.yaml
 """
 
 # =============================================================================
 # Python API Example
 # =============================================================================
 
-from vespaembed.core.config import DataConfig, OutputConfig, TrainingConfig, TrainingHyperparameters  # noqa: E402
+from vespaembed.core.config import (  # noqa: E402
+    DataConfig,
+    OutputConfig,
+    TrainingConfig,
+    TrainingHyperparameters,
+)
 from vespaembed.core.trainer import VespaEmbedTrainer  # noqa: E402
 
 
-def train_sts_basic():
-    """Basic STS training with minimal configuration."""
+def train_similarity_basic():
+    """Basic similarity training with minimal configuration."""
     config = TrainingConfig(
-        task="sts",
+        task="similarity",
         base_model="sentence-transformers/all-MiniLM-L6-v2",
-        data=DataConfig(train="examples/data/sts.csv"),
+        data=DataConfig(train="examples/data/similarity.csv"),
     )
 
     trainer = VespaEmbedTrainer(config)
@@ -67,28 +69,17 @@ def train_sts_basic():
     return model
 
 
-def train_sts_advanced():
-    """STS training with advanced configuration."""
+def train_similarity_cosent():
+    """Similarity training with CoSENT loss (often better than cosine)."""
     config = TrainingConfig(
-        task="sts",
-        base_model="BAAI/bge-small-en-v1.5",
-        data=DataConfig(
-            train="examples/data/sts.csv",
-            eval="examples/data/sts.csv",
-        ),
+        task="similarity",
+        base_model="sentence-transformers/all-MiniLM-L6-v2",
+        loss_variant="cosent",  # CoSENT loss
+        data=DataConfig(train="examples/data/similarity.csv"),
         training=TrainingHyperparameters(
-            epochs=5,
-            batch_size=16,
+            epochs=4,
+            batch_size=32,
             learning_rate=2e-5,
-            warmup_ratio=0.1,
-            weight_decay=0.01,
-            fp16=True,
-            eval_steps=50,
-            save_steps=100,
-        ),
-        output=OutputConfig(
-            dir="./output/sts-model",
-            save_total_limit=2,
         ),
     )
 
@@ -97,21 +88,27 @@ def train_sts_advanced():
     return model
 
 
-def train_sts_huggingface():
-    """STS training with HuggingFace STS Benchmark dataset."""
+def train_similarity_stsb():
+    """Similarity training with STS Benchmark from HuggingFace."""
     config = TrainingConfig(
-        task="sts",
+        task="similarity",
         base_model="sentence-transformers/all-MiniLM-L6-v2",
+        loss_variant="cosent",
         data=DataConfig(
             train="sentence-transformers/stsb",
             split="train",
-            eval="sentence-transformers/stsb",
             eval_split="validation",
         ),
         training=TrainingHyperparameters(
-            epochs=3,
+            epochs=4,
             batch_size=32,
+            learning_rate=2e-5,
+            optimizer="adamw_torch",
+            scheduler="linear",
+            eval_steps=100,
+            save_steps=500,
         ),
+        output=OutputConfig(dir="./output/similarity-model"),
     )
 
     trainer = VespaEmbedTrainer(config)
@@ -119,12 +116,12 @@ def train_sts_huggingface():
     return model
 
 
-def evaluate_sts_model():
-    """Example of evaluating STS model quality."""
+def evaluate_similarity_model():
+    """Example of evaluating similarity model quality."""
     from sentence_transformers import SentenceTransformer
     from sentence_transformers.util import cos_sim
 
-    model = SentenceTransformer("./output/sts-model/final")
+    model = SentenceTransformer("./output/similarity-model/final")
 
     # Test pairs with expected similarity
     test_pairs = [
@@ -134,18 +131,19 @@ def evaluate_sts_model():
         ("The sun is setting over the ocean", "The sun is rising over the mountains", 0.35),
     ]
 
-    print("STS Evaluation:")
+    print("Similarity Evaluation:")
     print("-" * 70)
     for s1, s2, expected in test_pairs:
         embeddings = model.encode([s1, s2])
         predicted = cos_sim(embeddings[0:1], embeddings[1:2]).item()
         diff = abs(predicted - expected)
         print(f"Expected: {expected:.2f} | Predicted: {predicted:.2f} | Diff: {diff:.2f}")
-        print(f"  '{s1}' <-> '{s2}'")
+        print(f"  '{s1}'")
+        print(f"  '{s2}'")
         print()
 
 
 if __name__ == "__main__":
-    print("Training STS model...")
-    train_sts_basic()
+    print("Training similarity model...")
+    train_similarity_basic()
     print("Training complete!")

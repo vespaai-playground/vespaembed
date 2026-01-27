@@ -1,0 +1,37 @@
+# Triplets task with Unsloth + LoRA
+# Fast parameter-efficient fine-tuning for triplet data
+
+task: triplets
+base_model: sentence-transformers/all-MiniLM-L6-v2
+
+data:
+  train: ./examples/data/triplets.csv
+
+training:
+  epochs: 3
+  batch_size: 32
+  learning_rate: 2e-5
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  bf16: true
+  optimizer: adamw_torch
+  scheduler: linear
+  eval_steps: 500
+  save_steps: 500
+  logging_steps: 100
+
+output:
+  push_to_hub: false
+
+gradient_checkpointing: true
+
+lora:
+  enabled: true
+  r: 64
+  alpha: 128
+  dropout: 0.0
+  target_modules: [query, key, value, dense]
+
+unsloth:
+  enabled: true
+  save_method: merged_16bit

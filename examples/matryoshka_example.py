@@ -9,13 +9,10 @@ This is useful when you need:
 - Speed vs accuracy: Use fewer dimensions for faster retrieval, more for accuracy
 - Progressive refinement: Start with coarse search, refine with full dimensions
 
-Data format: Same as MNR (anchor-positive pairs)
-- anchor: The query or question
-- positive: The relevant document or answer
+IMPORTANT: Matryoshka is NOT a task type - it's an option that can be combined
+with any task (pairs, triplets, similarity). Use matryoshka_dims to enable it.
 
-Column aliases supported:
-- anchor: query, question, sent1, sentence1, text1
-- positive: document, answer, pos, sent2, sentence2, text2
+Reference: https://arxiv.org/abs/2205.13147
 """
 
 # =============================================================================
@@ -23,48 +20,55 @@ Column aliases supported:
 # =============================================================================
 
 """
-# Train with default Matryoshka dimensions [768, 512, 256, 128, 64]
+# Train pairs with Matryoshka dimensions
 vespaembed train \\
-    --task matryoshka \\
-    --data examples/data/mnr.csv \\
+    --task pairs \\
+    --data examples/data/pairs.csv \\
     --base-model sentence-transformers/all-MiniLM-L6-v2 \\
-    --project my-matryoshka-model \\
+    --matryoshka-dims 384,256,128,64 \\
     --epochs 3
 
-# Train with custom dimensions
+# Train triplets with Matryoshka dimensions
 vespaembed train \\
-    --task matryoshka \\
-    --data examples/data/mnr.csv \\
+    --task triplets \\
+    --data examples/data/triplets.csv \\
     --base-model sentence-transformers/all-MiniLM-L6-v2 \\
-    --matryoshka-dims 384,256,128,64,32 \\
-    --project custom-matryoshka
+    --matryoshka-dims 384,256,128,64 \\
+    --epochs 3
 
 # Train with HuggingFace dataset
 vespaembed train \\
-    --task matryoshka \\
-    --data sentence-transformers/all-nli \\
-    --subset pair \\
+    --task pairs \\
+    --data sentence-transformers/gooaq \\
     --split train[:10000] \\
     --base-model sentence-transformers/all-MiniLM-L6-v2 \\
-    --matryoshka-dims 384,192,96,48 \\
-    --project nli-matryoshka
+    --matryoshka-dims 384,192,96,48
+
+# Train with YAML config
+vespaembed train --config examples/configs/pairs_matryoshka.yaml
 """
 
 # =============================================================================
 # Python API Example
 # =============================================================================
 
-from vespaembed.core.config import DataConfig, OutputConfig, TrainingConfig, TrainingHyperparameters  # noqa: E402
+from vespaembed.core.config import (  # noqa: E402
+    DataConfig,
+    LoraConfig,
+    OutputConfig,
+    TrainingConfig,
+    TrainingHyperparameters,
+)
 from vespaembed.core.trainer import VespaEmbedTrainer  # noqa: E402
 
 
-def train_matryoshka_basic():
-    """Basic Matryoshka training with default dimensions."""
+def train_pairs_with_matryoshka():
+    """Pairs training with Matryoshka embeddings."""
     config = TrainingConfig(
-        task="matryoshka",
+        task="pairs",  # Use pairs task
         base_model="sentence-transformers/all-MiniLM-L6-v2",
-        data=DataConfig(train="examples/data/mnr.csv"),
-        # Default dimensions: [768, 512, 256, 128, 64]
+        data=DataConfig(train="examples/data/pairs.csv"),
+        matryoshka_dims=[384, 256, 128, 64],  # Enable Matryoshka
     )
 
     trainer = VespaEmbedTrainer(config)
@@ -72,47 +76,17 @@ def train_matryoshka_basic():
     return model
 
 
-def train_matryoshka_custom_dims():
-    """Matryoshka training with custom dimensions."""
+def train_triplets_with_matryoshka():
+    """Triplets training with Matryoshka embeddings."""
     config = TrainingConfig(
-        task="matryoshka",
+        task="triplets",  # Use triplets task
         base_model="sentence-transformers/all-MiniLM-L6-v2",
-        data=DataConfig(train="examples/data/mnr.csv"),
-        matryoshka_dims=[384, 256, 128, 64, 32],  # Custom dimensions
+        data=DataConfig(train="examples/data/triplets.csv"),
+        matryoshka_dims=[384, 256, 128, 64],  # Enable Matryoshka
         training=TrainingHyperparameters(
             epochs=3,
             batch_size=32,
-        ),
-    )
-
-    trainer = VespaEmbedTrainer(config)
-    model = trainer.train()
-    return model
-
-
-def train_matryoshka_advanced():
-    """Matryoshka training with advanced configuration."""
-    config = TrainingConfig(
-        task="matryoshka",
-        base_model="BAAI/bge-small-en-v1.5",
-        data=DataConfig(
-            train="examples/data/mnr.csv",
-            eval="examples/data/mnr.csv",
-        ),
-        matryoshka_dims=[384, 256, 128, 64],
-        training=TrainingHyperparameters(
-            epochs=5,
-            batch_size=32,
             learning_rate=2e-5,
-            warmup_ratio=0.1,
-            weight_decay=0.01,
-            fp16=True,
-            eval_steps=50,
-            save_steps=100,
-        ),
-        output=OutputConfig(
-            dir="./output/matryoshka-model",
-            save_total_limit=2,
         ),
     )
 
@@ -124,17 +98,46 @@ def train_matryoshka_advanced():
 def train_matryoshka_huggingface():
     """Matryoshka training with HuggingFace dataset."""
     config = TrainingConfig(
-        task="matryoshka",
+        task="pairs",
         base_model="sentence-transformers/all-MiniLM-L6-v2",
         data=DataConfig(
-            train="sentence-transformers/all-nli",
-            subset="pair",
+            train="sentence-transformers/gooaq",
             split="train[:10000]",
         ),
         matryoshka_dims=[384, 192, 96, 48],
         training=TrainingHyperparameters(
-            epochs=2,
-            batch_size=32,
+            epochs=1,
+            batch_size=64,
+            fp16=True,
+        ),
+        output=OutputConfig(dir="./output/matryoshka-model"),
+    )
+
+    trainer = VespaEmbedTrainer(config)
+    model = trainer.train()
+    return model
+
+
+def train_matryoshka_with_lora():
+    """Matryoshka training with LoRA for memory efficiency."""
+    config = TrainingConfig(
+        task="pairs",
+        base_model="BAAI/bge-base-en-v1.5",
+        data=DataConfig(train="examples/data/pairs.csv"),
+        matryoshka_dims=[768, 512, 256, 128],
+        training=TrainingHyperparameters(
+            epochs=3,
+            batch_size=16,
+            learning_rate=1e-5,
+            fp16=True,
+        ),
+        gradient_checkpointing=True,
+        lora=LoraConfig(
+            enabled=True,
+            r=32,
+            alpha=64,
+            dropout=0.1,
+            target_modules=["query", "key", "value", "dense"],
         ),
     )
 
@@ -163,7 +166,7 @@ def evaluate_matryoshka_model():
     doc_embeddings = model.encode(documents)
 
     # Test at different dimensions
-    dimensions = [384, 256, 128, 64, 32]
+    dimensions = [384, 256, 128, 64]
 
     print("Matryoshka Evaluation - Similarity at Different Dimensions:")
     print("=" * 70)
@@ -198,5 +201,5 @@ def evaluate_matryoshka_model():
 
 if __name__ == "__main__":
     print("Training Matryoshka model...")
-    train_matryoshka_basic()
+    train_pairs_with_matryoshka()
     print("Training complete!")

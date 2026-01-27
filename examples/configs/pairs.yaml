@@ -1,0 +1,26 @@
+# Pairs task - basic configuration
+# For query-document pairs without explicit negatives
+# Uses in-batch negatives with MNR loss
+
+task: pairs
+base_model: sentence-transformers/all-MiniLM-L6-v2
+
+data:
+  train: ./examples/data/pairs.csv
+  # eval: ./eval.csv  # optional
+
+training:
+  epochs: 3
+  batch_size: 32
+  learning_rate: 2e-5
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  fp16: true
+  optimizer: adamw_torch
+  scheduler: linear
+  eval_steps: 500
+  save_steps: 500
+  logging_steps: 100
+
+output:
+  push_to_hub: false
