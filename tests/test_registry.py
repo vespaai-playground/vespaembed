@@ -76,6 +76,8 @@ class TestDefaultHyperparameters:
             "save_steps",
             "logging_steps",
             "gradient_accumulation_steps",
+            "optimizer",
+            "scheduler",
         ]
         for param in required:
             assert param in DEFAULT_HYPERPARAMETERS

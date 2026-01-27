@@ -66,6 +66,8 @@ class TestTrainingHyperparameters:
         assert config.save_steps == 500
         assert config.logging_steps == 100
         assert config.gradient_accumulation_steps == 1
+        assert config.optimizer == "adamw_torch"
+        assert config.scheduler == "linear"
 
     def test_custom_values(self):
         """Test custom hyperparameter values."""
@@ -75,12 +77,16 @@ class TestTrainingHyperparameters:
             learning_rate=1e-4,
             fp16=False,
             bf16=True,
+            optimizer="adafactor",
+            scheduler="cosine",
         )
         assert config.epochs == 10
         assert config.batch_size == 64
         assert config.learning_rate == 1e-4
         assert config.fp16 is False
         assert config.bf16 is True
+        assert config.optimizer == "adafactor"
+        assert config.scheduler == "cosine"
 
     def test_validation_epochs_positive(self):
         """Test that epochs must be positive."""

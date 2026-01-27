@@ -135,6 +135,8 @@ function updateTaskUI(task) {
         setValueIfExists('save_steps', hyper.save_steps);
         setValueIfExists('logging_steps', hyper.logging_steps);
         setValueIfExists('gradient_accumulation_steps', hyper.gradient_accumulation_steps);
+        setValueIfExists('optimizer', hyper.optimizer || 'adamw_torch');
+        setValueIfExists('scheduler', hyper.scheduler || 'linear');
 
         // Set precision dropdown
         if (hyper.bf16) {
@@ -830,6 +832,8 @@ async function handleTrainSubmit(e) {
         save_steps: parseInt(document.getElementById('save_steps').value),
         fp16: precision === 'fp16',
         bf16: precision === 'bf16',
+        optimizer: document.getElementById('optimizer').value,
+        scheduler: document.getElementById('scheduler').value,
 
         // LoRA settings
         lora_enabled: document.getElementById('lora_enabled').checked,

@@ -213,12 +213,77 @@ class VespaEmbedTrainer:
 
         return model
 
+    def _log_training_config(self):
+        """Log training configuration parameters."""
+        logger.info("=" * 60)
+        logger.info("Training Configuration")
+        logger.info("=" * 60)
+
+        # Model & Task
+        logger.info(f"  Base Model:      {self.config.base_model}")
+        logger.info(f"  Task:            {self.config.task}")
+        if self.config.loss_variant:
+            logger.info(f"  Loss Variant:    {self.config.loss_variant}")
+
+        # Data
+        logger.info(f"  Training Data:   {self.config.data.train}")
+        if self.config.data.eval:
+            logger.info(f"  Eval Data:       {self.config.data.eval}")
+
+        # Training hyperparameters
+        t = self.config.training
+        logger.info(f"  Epochs:          {t.epochs}")
+        logger.info(f"  Batch Size:      {t.batch_size}")
+        logger.info(f"  Learning Rate:   {t.learning_rate}")
+        logger.info(f"  Optimizer:       {t.optimizer}")
+        logger.info(f"  Scheduler:       {t.scheduler}")
+        logger.info(f"  Warmup Ratio:    {t.warmup_ratio}")
+        logger.info(f"  Weight Decay:    {t.weight_decay}")
+
+        # Precision
+        if t.bf16:
+            logger.info("  Precision:       BF16")
+        elif t.fp16:
+            logger.info("  Precision:       FP16")
+        else:
+            logger.info("  Precision:       FP32")
+
+        # Optional features
+        if self.config.max_seq_length:
+            logger.info(f"  Max Seq Length:  {self.config.max_seq_length}")
+        if self.config.gradient_checkpointing:
+            logger.info("  Grad Checkpoint: Enabled")
+        if t.gradient_accumulation_steps > 1:
+            logger.info(f"  Grad Accum:      {t.gradient_accumulation_steps}")
+
+        # LoRA
+        if self.config.lora.enabled:
+            logger.info(f"  LoRA:            r={self.config.lora.r}, alpha={self.config.lora.alpha}")
+
+        # Unsloth
+        if self.config.unsloth.enabled:
+            logger.info(f"  Unsloth:         Enabled (save: {self.config.unsloth.save_method})")
+
+        # Matryoshka
+        if self.config.matryoshka_dims:
+            logger.info(f"  Matryoshka:      {self.config.matryoshka_dims}")
+
+        # Output
+        logger.info(f"  Output Dir:      {self.config.output.dir}")
+        if self.config.output.push_to_hub:
+            logger.info(f"  Push to Hub:     {self.config.output.hf_username}")
+
+        logger.info("=" * 60)
+
     def train(self) -> SentenceTransformer:
         """Run the training process.
 
         Returns:
             Trained SentenceTransformer model
         """
+        # Log configuration
+        self._log_training_config()
+
         # 1. Load model
         self.model = self._load_model()
 
@@ -280,6 +345,7 @@ class VespaEmbedTrainer:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # 7. Training arguments
+        logger.info(f"Optimizer: {self.config.training.optimizer}, Scheduler: {self.config.training.scheduler}")
         args = SentenceTransformerTrainingArguments(
             output_dir=str(output_dir),
             num_train_epochs=self.config.training.epochs,
@@ -290,6 +356,8 @@ class VespaEmbedTrainer:
             weight_decay=self.config.training.weight_decay,
             fp16=self.config.training.fp16,
             bf16=self.config.training.bf16,
+            optim=self.config.training.optimizer,
+            lr_scheduler_type=self.config.training.scheduler,
             gradient_checkpointing=self.config.gradient_checkpointing,
             batch_sampler=self.task.batch_sampler,
             eval_strategy="steps" if evaluator else "no",

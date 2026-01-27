@@ -128,6 +128,10 @@ class TrainRequest(BaseModel):
     logging_steps: int = 100
     gradient_accumulation_steps: int = 1
 
+    # Optimizer and scheduler
+    optimizer: str = Field("adamw_torch", description="Optimizer type")
+    scheduler: str = Field("linear", description="Learning rate scheduler")
+
     # LoRA/PEFT parameters
     lora_enabled: bool = False
     lora_r: int = 64

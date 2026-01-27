@@ -17,6 +17,27 @@ DEFAULT_HYPERPARAMETERS = {
     "save_steps": 500,
     "logging_steps": 100,
     "gradient_accumulation_steps": 1,
+    "optimizer": "adamw_torch",
+    "scheduler": "linear",
+}
+
+# Available optimizer options
+OPTIMIZER_OPTIONS = {
+    "adamw_torch": "AdamW (default)",
+    "adamw_torch_fused": "AdamW Fused (faster on CUDA)",
+    "adamw_8bit": "AdamW 8-bit (memory efficient)",
+    "adafactor": "Adafactor (memory efficient)",
+    "sgd": "SGD with momentum",
+}
+
+# Available scheduler options
+SCHEDULER_OPTIONS = {
+    "linear": "Linear decay (default)",
+    "cosine": "Cosine annealing",
+    "cosine_with_restarts": "Cosine with warm restarts",
+    "constant": "Constant learning rate",
+    "constant_with_warmup": "Constant after warmup",
+    "polynomial": "Polynomial decay",
 }
 
 # Task-specific parameter definitions (currently none - matryoshka is now a global option)

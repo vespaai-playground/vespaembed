@@ -26,6 +26,8 @@ def train_command_factory(args: Namespace) -> "TrainCommand":
         epochs=args.epochs,
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
+        optimizer=args.optimizer,
+        scheduler=args.scheduler,
         unsloth=args.unsloth,
         matryoshka=args.matryoshka,
         matryoshka_dims=args.matryoshka_dims,
@@ -106,6 +108,20 @@ class TrainCommand(BaseCommand):
             help="Learning rate (default: 2e-5)",
         )
         train_parser.add_argument(
+            "--optimizer",
+            type=str,
+            default="adamw_torch",
+            choices=["adamw_torch", "adamw_torch_fused", "adamw_8bit", "adafactor", "sgd"],
+            help="Optimizer type (default: adamw_torch)",
+        )
+        train_parser.add_argument(
+            "--scheduler",
+            type=str,
+            default="linear",
+            choices=["linear", "cosine", "cosine_with_restarts", "constant", "constant_with_warmup", "polynomial"],
+            help="Learning rate scheduler (default: linear)",
+        )
+        train_parser.add_argument(
             "--unsloth",
             action="store_true",
             help="Use Unsloth for faster training",
@@ -149,6 +165,8 @@ class TrainCommand(BaseCommand):
         epochs: int = 3,
         batch_size: int = 32,
         learning_rate: float = 2e-5,
+        optimizer: str = "adamw_torch",
+        scheduler: str = "linear",
         unsloth: bool = False,
         matryoshka: bool = False,
         matryoshka_dims: str = "768,512,256,128,64",
@@ -164,6 +182,8 @@ class TrainCommand(BaseCommand):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.optimizer = optimizer
+        self.scheduler = scheduler
         self.unsloth = unsloth
         self.matryoshka = matryoshka
         self.matryoshka_dims = matryoshka_dims
@@ -232,6 +252,8 @@ class TrainCommand(BaseCommand):
                     "epochs": self.epochs,
                     "batch_size": self.batch_size,
                     "learning_rate": self.learning_rate,
+                    "optimizer": self.optimizer,
+                    "scheduler": self.scheduler,
                 },
                 output={
                     "dir": str(output_dir),

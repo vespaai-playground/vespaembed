@@ -372,14 +372,37 @@
                     <!-- Task-specific parameters (populated dynamically) -->
                     <div id="task-specific-params"></div>
 
-                    <!-- Optimizer & Checkpoints -->
+                    <!-- Optimizer & Scheduler -->
                     <div class="form-section">
-                        <label class="section-label">Optimizer & Checkpoints</label>
+                        <label class="section-label">Optimizer & Scheduler</label>
                         <div class="form-row">
+                            <div class="form-field compact">
+                                <label>Optimizer</label>
+                                <select id="optimizer" name="optimizer">
+                                    <option value="adamw_torch" selected>AdamW</option>
+                                    <option value="adamw_torch_fused">AdamW Fused (CUDA)</option>
+                                    <option value="adamw_8bit">AdamW 8-bit</option>
+                                    <option value="adafactor">Adafactor</option>
+                                    <option value="sgd">SGD</option>
+                                </select>
+                            </div>
+                            <div class="form-field compact">
+                                <label>Scheduler</label>
+                                <select id="scheduler" name="scheduler">
+                                    <option value="linear" selected>Linear</option>
+                                    <option value="cosine">Cosine</option>
+                                    <option value="cosine_with_restarts">Cosine w/ Restarts</option>
+                                    <option value="constant">Constant</option>
+                                    <option value="constant_with_warmup">Constant w/ Warmup</option>
+                                    <option value="polynomial">Polynomial</option>
+                                </select>
+                            </div>
                             <div class="form-field compact">
                                 <label>Weight Decay</label>
                                 <input type="text" id="weight_decay" name="weight_decay" value="0.01">
                             </div>
+                        </div>
+                        <div class="form-row">
                             <div class="form-field compact">
                                 <label>Grad Accum</label>
                                 <input type="number" id="gradient_accumulation_steps" name="gradient_accumulation_steps" value="1" min="1">
@@ -388,8 +411,6 @@
                                 <label>Logging Steps</label>
                                 <input type="number" id="logging_steps" name="logging_steps" value="100" min="1">
                             </div>
-                        </div>
-                        <div class="form-row">
                             <div class="form-field compact">
                                 <label>Eval Steps</label>
                                 <input type="number" id="eval_steps" name="eval_steps" value="500" min="1">

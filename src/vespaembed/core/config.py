@@ -4,6 +4,25 @@ from pydantic import BaseModel, Field
 
 from vespaembed.enums import LossVariant, TaskType
 
+# Optimizer choices (most common ones from HuggingFace)
+OptimizerType = Literal[
+    "adamw_torch",  # Default AdamW
+    "adamw_torch_fused",  # Fused AdamW (faster on CUDA)
+    "adamw_8bit",  # 8-bit AdamW (memory efficient)
+    "adafactor",  # Adafactor (memory efficient, no momentum)
+    "sgd",  # SGD with momentum
+]
+
+# Scheduler choices
+SchedulerType = Literal[
+    "linear",  # Linear decay (default)
+    "cosine",  # Cosine annealing
+    "cosine_with_restarts",  # Cosine with warm restarts
+    "constant",  # Constant learning rate
+    "constant_with_warmup",  # Constant after warmup
+    "polynomial",  # Polynomial decay
+]
+
 
 class DataConfig(BaseModel):
     """Data configuration."""
@@ -52,6 +71,16 @@ class TrainingHyperparameters(BaseModel):
     save_steps: int = Field(500, description="Save checkpoint every N steps", ge=1)
     logging_steps: int = Field(100, description="Log every N steps", ge=1)
     gradient_accumulation_steps: int = Field(1, description="Gradient accumulation steps", ge=1)
+
+    # Optimizer and scheduler
+    optimizer: OptimizerType = Field(
+        "adamw_torch",
+        description="Optimizer type (adamw_torch, adamw_torch_fused, adamw_8bit, adafactor, sgd)",
+    )
+    scheduler: SchedulerType = Field(
+        "linear",
+        description="Learning rate scheduler (linear, cosine, cosine_with_restarts, constant, constant_with_warmup, polynomial)",
+    )
 
 
 class OutputConfig(BaseModel):

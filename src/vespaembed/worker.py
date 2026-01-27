@@ -56,11 +56,79 @@ class TrainingWorker:
         with open(update_file, "a") as f:
             f.write(json.dumps(update) + "\n")
 
+    def _log_config(self):
+        """Log training configuration to UI."""
+        c = self.config
+        lines = [
+            "=" * 50,
+            "Training Configuration",
+            "=" * 50,
+            f"  Base Model:      {c.get('base_model', '--')}",
+            f"  Task:            {c.get('task', '--')}",
+        ]
+
+        if c.get("loss_variant"):
+            lines.append(f"  Loss Variant:    {c['loss_variant']}")
+
+        # Data source
+        if c.get("train_filename"):
+            lines.append(f"  Training Data:   {c['train_filename'].split('/')[-1]}")
+        elif c.get("hf_dataset"):
+            lines.append(f"  Training Data:   {c['hf_dataset']}")
+
+        # Training params
+        lines.extend(
+            [
+                f"  Epochs:          {c.get('epochs', 3)}",
+                f"  Batch Size:      {c.get('batch_size', 32)}",
+                f"  Learning Rate:   {c.get('learning_rate', 2e-5)}",
+                f"  Optimizer:       {c.get('optimizer', 'adamw_torch')}",
+                f"  Scheduler:       {c.get('scheduler', 'linear')}",
+                f"  Warmup Ratio:    {c.get('warmup_ratio', 0.1)}",
+                f"  Weight Decay:    {c.get('weight_decay', 0.01)}",
+            ]
+        )
+
+        # Precision
+        if c.get("bf16"):
+            lines.append("  Precision:       BF16")
+        elif c.get("fp16"):
+            lines.append("  Precision:       FP16")
+        else:
+            lines.append("  Precision:       FP32")
+
+        # Optional features
+        if c.get("gradient_checkpointing"):
+            lines.append("  Grad Checkpoint: Enabled")
+        if c.get("gradient_accumulation_steps", 1) > 1:
+            lines.append(f"  Grad Accum:      {c['gradient_accumulation_steps']}")
+
+        # LoRA
+        if c.get("lora_enabled"):
+            lines.append(f"  LoRA:            r={c.get('lora_r', 64)}, alpha={c.get('lora_alpha', 128)}")
+
+        # Unsloth
+        if c.get("unsloth_enabled"):
+            lines.append(f"  Unsloth:         Enabled ({c.get('unsloth_save_method', 'merged_16bit')})")
+
+        # Matryoshka
+        if c.get("matryoshka_dims"):
+            lines.append(f"  Matryoshka:      {c['matryoshka_dims']}")
+
+        lines.append("=" * 50)
+
+        # Send each line as a log message
+        for line in lines:
+            self._send_update("log", {"message": line})
+
     def run(self):
         """Execute the training run."""
         try:
             logger.info(f"Starting training run {self.run_id}")
             self._send_update("status", {"status": "running"})
+
+            # Log configuration to UI
+            self._log_config()
 
             # Determine data source - file upload or HuggingFace dataset
             train_source = self.config.get("train_filename") or self.config.get("hf_dataset")
@@ -131,6 +199,8 @@ class TrainingWorker:
                     save_steps=self.config.get("save_steps", 500),
                     logging_steps=self.config.get("logging_steps", 100),
                     gradient_accumulation_steps=self.config.get("gradient_accumulation_steps", 1),
+                    optimizer=self.config.get("optimizer", "adamw_torch"),
+                    scheduler=self.config.get("scheduler", "linear"),
                 ),
                 output=OutputConfig(
                     dir=self.config["output_dir"],  # Required - set by web app
