@@ -15,26 +15,25 @@ No-code training for embedding models. Train custom embedding models with a web 
 
 ## Installation
 
-```bash
-pip install vespaembed
-```
-
-Or install from source:
+> **Note:** VespaEmbed is in experimental phase. Install from source.
 
 ```bash
 git clone https://github.com/vespaai-playground/vespaembed.git
 cd vespaembed
-pip install -e .
+uv sync
 ```
 
 ### Optional Dependencies
 
 ```bash
 # For Unsloth acceleration (requires NVIDIA/AMD GPU)
-pip install vespaembed[unsloth]
+uv sync --extra unsloth
 
 # For ONNX export
-pip install vespaembed[onnx]
+uv sync --extra onnx
+
+# For development
+uv sync --extra dev
 ```
 
 ## Quick Start
@@ -266,13 +265,13 @@ VespaEmbed automatically recognizes common column name variations:
 
 ```bash
 # Install dev dependencies
-pip install -e ".[dev]"
+uv sync --extra dev
 
 # Run tests
-pytest tests/
+uv run pytest tests/
 
 # Run tests with coverage
-pytest tests/ --cov=vespaembed
+uv run pytest tests/ --cov=vespaembed
 
 # Format code
 make format
