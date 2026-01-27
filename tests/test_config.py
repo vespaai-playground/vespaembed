@@ -213,7 +213,7 @@ class TestTrainingConfig:
     def test_full_config(self):
         """Test full training config."""
         config = TrainingConfig(
-            task="matryoshka",
+            task="pairs",
             base_model="BAAI/bge-small-en-v1.5",
             data=DataConfig(train="train.csv", eval="eval.csv"),
             training=TrainingHyperparameters(epochs=5, batch_size=16),
@@ -224,7 +224,7 @@ class TestTrainingConfig:
             gradient_checkpointing=True,
             matryoshka_dims=[512, 256, 128],
         )
-        assert config.task == "matryoshka"
+        assert config.task == "pairs"
         assert config.training.epochs == 5
         assert config.training.batch_size == 16
         assert config.output.push_to_hub is True
@@ -326,7 +326,7 @@ output:
     def test_load_yaml_with_matryoshka(self):
         """Test loading config with matryoshka dims from YAML."""
         yaml_content = """
-task: matryoshka
+task: pairs
 base_model: model
 data:
   train: train.csv
@@ -337,7 +337,7 @@ matryoshka_dims: [768, 512, 256, 128]
             f.flush()
             config = load_config_from_yaml(f.name)
 
-        assert config.task == "matryoshka"
+        assert config.task == "pairs"
         assert config.matryoshka_dims == [768, 512, 256, 128]
 
         # Cleanup

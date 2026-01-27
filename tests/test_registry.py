@@ -4,7 +4,7 @@ import pytest
 
 # Import tasks to register them
 import vespaembed.tasks  # noqa: F401
-from vespaembed.core.registry import DEFAULT_HYPERPARAMETERS, TASK_SAMPLE_DATA, TASK_SPECIFIC_PARAMS, Registry
+from vespaembed.core.registry import DEFAULT_HYPERPARAMETERS, TASK_SAMPLE_DATA, Registry
 
 
 class TestRegistry:
@@ -14,20 +14,17 @@ class TestRegistry:
         """Test listing all registered tasks."""
         tasks = Registry.list_tasks()
         assert isinstance(tasks, list)
-        assert len(tasks) == 7
-        assert "mnr" in tasks
-        assert "triplet" in tasks
-        assert "contrastive" in tasks
-        assert "sts" in tasks
-        assert "nli" in tasks
+        assert len(tasks) == 4
+        assert "pairs" in tasks
+        assert "triplets" in tasks
+        assert "similarity" in tasks
         assert "tsdae" in tasks
-        assert "matryoshka" in tasks
 
     def test_get_task(self):
         """Test getting a task class by name."""
-        task_cls = Registry.get_task("mnr")
+        task_cls = Registry.get_task("pairs")
         assert task_cls is not None
-        assert task_cls.name == "mnr"
+        assert task_cls.name == "pairs"
 
     def test_get_unknown_task_raises(self):
         """Test that getting an unknown task raises ValueError."""
@@ -40,7 +37,7 @@ class TestRegistry:
         """Test getting info for all tasks."""
         tasks = Registry.get_task_info()
         assert isinstance(tasks, list)
-        assert len(tasks) == 7
+        assert len(tasks) == 4
 
         for task in tasks:
             assert "name" in task
@@ -51,9 +48,9 @@ class TestRegistry:
 
     def test_get_task_info_single(self):
         """Test getting info for a single task."""
-        task = Registry.get_task_info("mnr")
+        task = Registry.get_task_info("pairs")
         assert isinstance(task, dict)
-        assert task["name"] == "mnr"
+        assert task["name"] == "pairs"
         assert task["expected_columns"] == ["anchor", "positive"]
 
     def test_get_task_info_unknown_raises(self):
@@ -92,79 +89,42 @@ class TestDefaultHyperparameters:
         assert DEFAULT_HYPERPARAMETERS["bf16"] is False
 
 
-class TestTaskSpecificParams:
-    """Test task-specific parameters."""
-
-    def test_matryoshka_has_dims_param(self):
-        """Test that matryoshka task has dims parameter."""
-        assert "matryoshka" in TASK_SPECIFIC_PARAMS
-        assert "matryoshka_dims" in TASK_SPECIFIC_PARAMS["matryoshka"]
-
-    def test_matryoshka_dims_config(self):
-        """Test matryoshka dims parameter configuration."""
-        param = TASK_SPECIFIC_PARAMS["matryoshka"]["matryoshka_dims"]
-        assert param["type"] == "text"
-        assert param["default"] == "768,512,256,128,64"
-        assert "label" in param
-        assert "description" in param
-
-
 class TestTaskSampleData:
     """Test task sample data."""
 
     def test_all_tasks_have_sample_data(self):
         """Test that all tasks have sample data."""
-        tasks = ["mnr", "triplet", "contrastive", "sts", "nli", "tsdae", "matryoshka"]
+        tasks = ["pairs", "triplets", "similarity", "tsdae"]
         for task in tasks:
             assert task in TASK_SAMPLE_DATA
             assert len(TASK_SAMPLE_DATA[task]) > 0
 
-    def test_mnr_sample_data(self):
-        """Test MNR sample data has correct columns."""
-        samples = TASK_SAMPLE_DATA["mnr"]
+    def test_pairs_sample_data(self):
+        """Test pairs sample data has correct columns."""
+        samples = TASK_SAMPLE_DATA["pairs"]
         assert len(samples) >= 1
         for sample in samples:
             assert "anchor" in sample
             assert "positive" in sample
 
-    def test_triplet_sample_data(self):
-        """Test triplet sample data has correct columns."""
-        samples = TASK_SAMPLE_DATA["triplet"]
+    def test_triplets_sample_data(self):
+        """Test triplets sample data has correct columns."""
+        samples = TASK_SAMPLE_DATA["triplets"]
         assert len(samples) >= 1
         for sample in samples:
             assert "anchor" in sample
             assert "positive" in sample
             assert "negative" in sample
 
-    def test_sts_sample_data(self):
-        """Test STS sample data has correct columns."""
-        samples = TASK_SAMPLE_DATA["sts"]
+    def test_similarity_sample_data(self):
+        """Test similarity sample data has correct columns."""
+        samples = TASK_SAMPLE_DATA["similarity"]
         assert len(samples) >= 1
         for sample in samples:
             assert "sentence1" in sample
             assert "sentence2" in sample
             assert "score" in sample
             assert 0 <= sample["score"] <= 1
-
-    def test_contrastive_sample_data(self):
-        """Test contrastive sample data has correct columns."""
-        samples = TASK_SAMPLE_DATA["contrastive"]
-        assert len(samples) >= 1
-        for sample in samples:
-            assert "sentence1" in sample
-            assert "sentence2" in sample
-            assert "label" in sample
-            assert sample["label"] in [0, 1]
-
-    def test_nli_sample_data(self):
-        """Test NLI sample data has correct columns."""
-        samples = TASK_SAMPLE_DATA["nli"]
-        assert len(samples) >= 1
-        for sample in samples:
-            assert "sentence1" in sample
-            assert "sentence2" in sample
-            assert "label" in sample
-            assert sample["label"] in [0, 1, 2]
 
     def test_tsdae_sample_data(self):
         """Test TSDAE sample data has correct columns."""
@@ -174,69 +134,120 @@ class TestTaskSampleData:
             assert "text" in sample
 
 
-class TestMNRTask:
-    """Test MNR task class."""
+class TestPairsTask:
+    """Test pairs task class."""
 
     def test_task_attributes(self):
-        """Test MNR task has correct attributes."""
-        task_cls = Registry.get_task("mnr")
-        assert task_cls.name == "mnr"
+        """Test pairs task has correct attributes."""
+        task_cls = Registry.get_task("pairs")
+        assert task_cls.name == "pairs"
         assert task_cls.expected_columns == ["anchor", "positive"]
         assert "anchor" in task_cls.column_aliases
         assert "positive" in task_cls.column_aliases
 
     def test_column_aliases(self):
-        """Test MNR task column aliases."""
-        task_cls = Registry.get_task("mnr")
+        """Test pairs task column aliases."""
+        task_cls = Registry.get_task("pairs")
         assert "query" in task_cls.column_aliases["anchor"]
         assert "question" in task_cls.column_aliases["anchor"]
         assert "document" in task_cls.column_aliases["positive"]
 
+    def test_loss_options(self):
+        """Test pairs task has loss options."""
+        task_cls = Registry.get_task("pairs")
+        assert "mnr" in task_cls.loss_options
+        assert "mnr_symmetric" in task_cls.loss_options
+        assert "gist" in task_cls.loss_options
+        assert task_cls.default_loss == "mnr"
 
-class TestTripletTask:
-    """Test triplet task class."""
+    def test_loss_variant_selection(self):
+        """Test pairs task loss variant selection."""
+        task_cls = Registry.get_task("pairs")
+        # Default loss
+        task = task_cls()
+        assert task.loss_variant == "mnr"
+        # Custom loss
+        task = task_cls(loss_variant="mnr_symmetric")
+        assert task.loss_variant == "mnr_symmetric"
+
+    def test_invalid_loss_variant_raises(self):
+        """Test that invalid loss variant raises ValueError."""
+        task_cls = Registry.get_task("pairs")
+        with pytest.raises(ValueError) as exc_info:
+            task_cls(loss_variant="invalid_loss")
+        assert "Unknown loss variant" in str(exc_info.value)
+
+
+class TestTripletsTask:
+    """Test triplets task class."""
 
     def test_task_attributes(self):
-        """Test triplet task has correct attributes."""
-        task_cls = Registry.get_task("triplet")
-        assert task_cls.name == "triplet"
+        """Test triplets task has correct attributes."""
+        task_cls = Registry.get_task("triplets")
+        assert task_cls.name == "triplets"
         assert task_cls.expected_columns == ["anchor", "positive", "negative"]
 
+    def test_column_aliases(self):
+        """Test triplets task column aliases."""
+        task_cls = Registry.get_task("triplets")
+        assert "query" in task_cls.column_aliases["anchor"]
+        assert "document" in task_cls.column_aliases["positive"]
+        assert "hard_negative" in task_cls.column_aliases["negative"]
 
-class TestSTSTask:
-    """Test STS task class."""
+    def test_loss_options(self):
+        """Test triplets task has loss options."""
+        task_cls = Registry.get_task("triplets")
+        assert "mnr" in task_cls.loss_options
+        assert "mnr_symmetric" in task_cls.loss_options
+        assert task_cls.default_loss == "mnr"
+
+
+class TestSimilarityTask:
+    """Test similarity task class."""
 
     def test_task_attributes(self):
-        """Test STS task has correct attributes."""
-        task_cls = Registry.get_task("sts")
-        assert task_cls.name == "sts"
+        """Test similarity task has correct attributes."""
+        task_cls = Registry.get_task("similarity")
+        assert task_cls.name == "similarity"
         assert task_cls.expected_columns == ["sentence1", "sentence2", "score"]
 
-
-class TestContrastiveTask:
-    """Test contrastive task class."""
-
-    def test_task_attributes(self):
-        """Test contrastive task has correct attributes."""
-        task_cls = Registry.get_task("contrastive")
-        assert task_cls.name == "contrastive"
-        assert task_cls.expected_columns == ["sentence1", "sentence2", "label"]
-
-
-class TestNLITask:
-    """Test NLI task class."""
-
-    def test_task_attributes(self):
-        """Test NLI task has correct attributes."""
-        task_cls = Registry.get_task("nli")
-        assert task_cls.name == "nli"
-        assert task_cls.expected_columns == ["sentence1", "sentence2", "label"]
-
     def test_column_aliases(self):
-        """Test NLI task column aliases."""
-        task_cls = Registry.get_task("nli")
-        assert "premise" in task_cls.column_aliases["sentence1"]
-        assert "hypothesis" in task_cls.column_aliases["sentence2"]
+        """Test similarity task column aliases."""
+        task_cls = Registry.get_task("similarity")
+        assert "sent1" in task_cls.column_aliases["sentence1"]
+        assert "sent2" in task_cls.column_aliases["sentence2"]
+        assert "similarity" in task_cls.column_aliases["score"]
+
+    def test_loss_options(self):
+        """Test similarity task has loss options."""
+        task_cls = Registry.get_task("similarity")
+        assert "cosine" in task_cls.loss_options
+        assert "cosent" in task_cls.loss_options
+        assert "angle" in task_cls.loss_options
+        assert task_cls.default_loss == "cosine"
+
+    def test_score_normalization(self):
+        """Test that similarity task normalizes scores."""
+        from datasets import Dataset
+
+        task = Registry.get_task("similarity")()
+
+        # Create dataset with 0-5 scale scores
+        dataset = Dataset.from_dict(
+            {
+                "sentence1": ["A man is eating", "A woman is running", "A cat sleeps"],
+                "sentence2": ["A person is eating food", "A person is exercising", "A dog runs"],
+                "score": [5.0, 2.5, 1.0],  # 0-5 scale, max is 5.0
+            }
+        )
+
+        prepared = task.prepare_dataset(dataset)
+
+        # Scores should be normalized to 0-1 range (divided by max_score)
+        assert all(0 <= score <= 1 for score in prepared["score"])
+        assert prepared["score"][0] == pytest.approx(1.0)  # 5.0/5.0
+        assert prepared["score"][1] == pytest.approx(0.5)  # 2.5/5.0
+        assert prepared["score"][2] == pytest.approx(0.2)  # 1.0/5.0
 
 
 class TestTSDAETask:
@@ -254,133 +265,96 @@ class TestTSDAETask:
         assert "sentence" in task_cls.column_aliases["text"]
         assert "content" in task_cls.column_aliases["text"]
 
+    def test_no_loss_options(self):
+        """Test TSDAE task has no loss variants (only TSDAE loss)."""
+        task_cls = Registry.get_task("tsdae")
+        assert task_cls.loss_options == []
 
-class TestMatryoshkaTask:
-    """Test matryoshka task class."""
-
-    def test_task_attributes(self):
-        """Test matryoshka task has correct attributes."""
-        task_cls = Registry.get_task("matryoshka")
-        assert task_cls.name == "matryoshka"
-        assert task_cls.expected_columns == ["anchor", "positive"]
-
-    def test_default_dims(self):
-        """Test matryoshka task default dimensions."""
-        task_cls = Registry.get_task("matryoshka")
-        task = task_cls()
-        assert task.matryoshka_dims == [768, 512, 256, 128, 64]
-
-    def test_custom_dims(self):
-        """Test matryoshka task with custom dimensions."""
-        task_cls = Registry.get_task("matryoshka")
-        task = task_cls(matryoshka_dims=[512, 256, 128])
-        assert task.matryoshka_dims == [512, 256, 128]
-
-
-class TestLabelEncoding:
-    """Test label encoding for classification tasks."""
-
-    def test_nli_string_label_encoding(self):
-        """Test NLI task encodes string labels to integers."""
+    def test_prepare_dataset_adds_noise(self):
+        """Test that TSDAE prepare_dataset adds noisy anchor column."""
         from datasets import Dataset
 
-        task = Registry.get_task("nli")()
+        task = Registry.get_task("tsdae")()
 
-        # Create dataset with string labels
         dataset = Dataset.from_dict(
             {
-                "sentence1": ["A man is eating", "A woman is running"],
-                "sentence2": ["A person is eating food", "A person is exercising"],
-                "label": ["entailment", "neutral"],
+                "text": ["This is a test sentence with many words."],
             }
         )
 
         prepared = task.prepare_dataset(dataset)
 
-        # Check labels are integers
-        assert all(isinstance(label, int) for label in prepared["label"])
+        # Should have anchor (noisy) and positive (original) columns
+        assert "anchor" in prepared.column_names
+        assert "positive" in prepared.column_names
+        assert "text" not in prepared.column_names
 
-        # Check mappings were created
-        assert task.label_to_idx is not None
-        assert task.idx_to_label is not None
-        assert task.num_labels == 2
-        assert task.label_to_idx["entailment"] == 0
-        assert task.label_to_idx["neutral"] == 1
-        assert task.idx_to_label[0] == "entailment"
-        assert task.idx_to_label[1] == "neutral"
+        # Positive should be original text
+        assert prepared["positive"][0] == "This is a test sentence with many words."
 
-    def test_nli_integer_label_encoding(self):
-        """Test NLI task handles integer labels correctly."""
+        # Anchor should be shorter (words deleted)
+        assert len(prepared["anchor"][0].split()) <= len(prepared["positive"][0].split())
+
+
+class TestBaseTaskFunctionality:
+    """Test common BaseTask functionality across all tasks."""
+
+    def test_all_tasks_have_required_attributes(self):
+        """Test that all tasks have required attributes."""
+        for task_name in Registry.list_tasks():
+            task_cls = Registry.get_task(task_name)
+            assert hasattr(task_cls, "name")
+            assert hasattr(task_cls, "description")
+            assert hasattr(task_cls, "expected_columns")
+            assert hasattr(task_cls, "column_aliases")
+            assert hasattr(task_cls, "get_loss")
+            assert hasattr(task_cls, "get_evaluator")
+            assert hasattr(task_cls, "prepare_dataset")
+
+    def test_tasks_have_no_labels(self):
+        """Test that current tasks don't use label encoding."""
+        for task_name in Registry.list_tasks():
+            task = Registry.get_task(task_name)()
+            assert task.label_to_idx is None
+            assert task.idx_to_label is None
+            assert task.num_labels is None
+            assert task.get_label_config() is None
+
+    def test_column_alias_resolution(self):
+        """Test that column aliases are resolved correctly."""
         from datasets import Dataset
 
-        task = Registry.get_task("nli")()
+        task = Registry.get_task("pairs")()
 
-        # Create dataset with integer labels
+        # Create dataset with aliased column names
         dataset = Dataset.from_dict(
             {
-                "sentence1": ["A man is eating", "A woman is running"],
-                "sentence2": ["A person is eating food", "A person is exercising"],
-                "label": [0, 2],
+                "query": ["What is AI?", "How does ML work?"],
+                "document": ["AI is artificial intelligence", "ML learns from data"],
             }
         )
 
-        task.prepare_dataset(dataset)
+        prepared = task.prepare_dataset(dataset)
 
-        # Check mappings were created
-        assert task.label_to_idx is not None
-        assert task.num_labels == 2
+        # Columns should be renamed to canonical names
+        assert "anchor" in prepared.column_names
+        assert "positive" in prepared.column_names
+        assert "query" not in prepared.column_names
+        assert "document" not in prepared.column_names
 
-    def test_contrastive_label_encoding(self):
-        """Test contrastive task creates default label mappings."""
+    def test_missing_required_columns_raises(self):
+        """Test that missing required columns raise ValueError."""
         from datasets import Dataset
 
-        task = Registry.get_task("contrastive")()
+        task = Registry.get_task("pairs")()
 
-        # Create dataset with integer labels
+        # Create dataset missing required columns
         dataset = Dataset.from_dict(
             {
-                "sentence1": ["A cat", "A dog"],
-                "sentence2": ["A feline", "A canine"],
-                "label": [1, 0],
+                "text": ["Some text"],
             }
         )
 
-        task.prepare_dataset(dataset)
-
-        # Check default binary mappings
-        assert task.label_to_idx == {"dissimilar": 0, "similar": 1}
-        assert task.idx_to_label == {0: "dissimilar", 1: "similar"}
-
-    def test_label_config_output(self):
-        """Test get_label_config returns HuggingFace format."""
-        from datasets import Dataset
-
-        task = Registry.get_task("nli")()
-
-        dataset = Dataset.from_dict(
-            {
-                "sentence1": ["A", "B", "C"],
-                "sentence2": ["D", "E", "F"],
-                "label": ["positive", "negative", "neutral"],
-            }
-        )
-
-        task.prepare_dataset(dataset)
-        config = task.get_label_config()
-
-        assert config is not None
-        assert "id2label" in config
-        assert "label2id" in config
-        assert "num_labels" in config
-        assert config["num_labels"] == 3
-        # HuggingFace format: id2label has string keys
-        assert config["id2label"]["0"] == "negative"
-        assert config["label2id"]["negative"] == 0
-
-    def test_task_without_labels_returns_none(self):
-        """Test tasks without labels return None for label config."""
-        task = Registry.get_task("mnr")()
-        assert task.label_to_idx is None
-        assert task.idx_to_label is None
-        assert task.num_labels is None
-        assert task.get_label_config() is None
+        with pytest.raises(ValueError) as exc_info:
+            task.prepare_dataset(dataset)
+        assert "Missing required columns" in str(exc_info.value)
