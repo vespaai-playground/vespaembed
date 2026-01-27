@@ -133,6 +133,9 @@ class VespaEmbedTrainer:
         else:
             logger.info(f"Using model's default max_seq_length: {model.max_seq_length}")
 
+        # Note: gradient_checkpointing is handled by SentenceTransformerTrainingArguments
+        # The Trainer will automatically enable it on the model during training
+
         # Add LoRA adapter if enabled
         if self.config.lora.enabled:
             try:
@@ -160,6 +163,8 @@ class VespaEmbedTrainer:
 
     def _load_unsloth_model(self) -> SentenceTransformer:
         """Load model with Unsloth for faster training."""
+        import torch
+
         try:
             from unsloth import FastSentenceTransformer
         except ImportError:
@@ -176,22 +181,40 @@ class VespaEmbedTrainer:
         else:
             logger.info(f"Using specified max_seq_length: {max_seq_length}")
 
+        # Determine dtype based on precision settings
+        # BF16 is preferred for Unsloth when available (better for training)
+        if self.config.training.bf16:
+            dtype = torch.bfloat16
+            logger.info("Using BF16 precision for Unsloth")
+        elif self.config.training.fp16:
+            dtype = torch.float16
+            logger.info("Using FP16 precision for Unsloth")
+        else:
+            dtype = None  # Let Unsloth auto-detect
+            logger.info("Using auto-detected precision for Unsloth")
+
         # Full finetuning when Unsloth is enabled but LoRA is not
         full_finetuning = not self.config.lora.enabled
 
+        # Use Unsloth's optimized gradient checkpointing ("unsloth") when enabled
+        # This is faster and uses less memory than standard PyTorch GC
+        # Must be passed to from_pretrained for full finetuning, or get_peft_model for LoRA
+        use_gc = "unsloth" if self.config.gradient_checkpointing else False
+
         logger.info(f"Loading model with Unsloth: {self.config.base_model}")
+        if full_finetuning:
+            logger.info(f"Full finetuning mode (gradient_checkpointing={use_gc})")
         model = FastSentenceTransformer.from_pretrained(
             model_name=self.config.base_model,
             max_seq_length=max_seq_length,
             full_finetuning=full_finetuning,
+            dtype=dtype,
+            use_gradient_checkpointing=use_gc if full_finetuning else False,
             token=HF_TOKEN_ENV,
         )
 
         # Add LoRA if enabled
         if self.config.lora.enabled:
-            # Use Unsloth's optimized gradient checkpointing when enabled
-            use_gc = "unsloth" if self.config.gradient_checkpointing else False
-
             logger.info(
                 f"Applying Unsloth LoRA: r={self.config.lora.r}, "
                 f"alpha={self.config.lora.alpha}, target_modules={self.config.lora.target_modules}"
