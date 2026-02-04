@@ -452,6 +452,10 @@ class VespaEmbedTrainer:
         """
         path_str = str(path)
 
+        # Add vespaembed tag to model card metadata
+        if hasattr(self.model, "model_card_data") and self.model.model_card_data is not None:
+            self.model.model_card_data.add_tags("vespaembed")
+
         if self.config.unsloth.enabled:
             save_method = self.config.unsloth.save_method
 
@@ -478,6 +482,37 @@ class VespaEmbedTrainer:
         else:
             # Standard or LoRA (PEFT) save
             self.model.save_pretrained(path_str)
+
+        # Add vespaembed mention to README.md
+        self._add_vespaembed_to_readme(path)
+
+    def _add_vespaembed_to_readme(self, path: Path) -> None:
+        """Add vespaembed mention to the README.md file."""
+        readme_path = path / "README.md"
+        if not readme_path.exists():
+            return
+
+        content = readme_path.read_text()
+
+        # Insert vespaembed mention after the first heading
+        vespaembed_mention = (
+            "\n> This model was trained using " "[vespaembed](https://github.com/vespa-engine/vespaembed).\n"
+        )
+
+        # Find the first heading and insert after it
+        lines = content.split("\n")
+        new_lines = []
+        inserted = False
+
+        for i, line in enumerate(lines):
+            new_lines.append(line)
+            # Insert after the first markdown heading (starting with #)
+            if not inserted and line.startswith("# ") and not line.startswith("# For reference"):
+                new_lines.append(vespaembed_mention)
+                inserted = True
+
+        if inserted:
+            readme_path.write_text("\n".join(new_lines))
 
     def _push_to_hub(self, repo_id: str) -> None:
         """Push the model to HuggingFace Hub.
