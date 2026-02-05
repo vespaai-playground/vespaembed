@@ -537,3 +537,30 @@ class VespaEmbedTrainer:
         else:
             # Standard or LoRA (PEFT) save
             self.model.push_to_hub(repo_id, token=HF_TOKEN_ENV, private=True)
+
+        # Upload the modified README.md with vespaembed mention
+        self._upload_readme_to_hub(repo_id)
+
+    def _upload_readme_to_hub(self, repo_id: str) -> None:
+        """Upload the modified README.md to HuggingFace Hub.
+
+        This uploads the local README.md (which contains the vespaembed mention)
+        to overwrite the auto-generated one on the hub.
+        """
+        from huggingface_hub import HfApi
+
+        # Get the local README.md path from the final output directory
+        output_dir = Path(self.config.output.dir)
+        readme_path = output_dir / "final" / "README.md"
+
+        if not readme_path.exists():
+            logger.warning(f"README.md not found at {readme_path}, skipping upload")
+            return
+
+        api = HfApi()
+        api.upload_file(
+            path_or_fileobj=str(readme_path),
+            path_in_repo="README.md",
+            repo_id=repo_id,
+            token=HF_TOKEN_ENV,
+        )
