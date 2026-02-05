@@ -2,6 +2,13 @@
 
 No-code training for embedding models. Train custom embedding models with a web UI or CLI.
 
+<p align="center">
+  <a href="https://huggingface.co/spaces/vespa-engine/vespaembed?duplicate=true">
+    <img src="assets/hf-spaces-badge.svg" alt="Deploy on HF Spaces">
+  </a>
+</p>
+
+
 ## Features
 
 - **Web UI** - Visual interface for configuring and monitoring training
