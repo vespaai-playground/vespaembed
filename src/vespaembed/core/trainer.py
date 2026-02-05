@@ -452,6 +452,10 @@ class VespaEmbedTrainer:
         """
         path_str = str(path)
 
+        # Add vespaembed tag to model card metadata
+        if hasattr(self.model, "model_card_data") and self.model.model_card_data is not None:
+            self.model.model_card_data.add_tags("vespaembed")
+
         if self.config.unsloth.enabled:
             save_method = self.config.unsloth.save_method
 
@@ -479,6 +483,44 @@ class VespaEmbedTrainer:
             # Standard or LoRA (PEFT) save
             self.model.save_pretrained(path_str)
 
+        # Add vespaembed mention to README.md
+        self._add_vespaembed_to_readme(path)
+
+    def _add_vespaembed_to_readme(self, path: Path) -> None:
+        """Add vespaembed mention to the README.md file.
+
+        This method is idempotent - it will not add duplicate mentions if called multiple times.
+        """
+        readme_path = path / "README.md"
+        if not readme_path.exists():
+            return
+
+        content = readme_path.read_text(encoding="utf-8")
+
+        # Check if vespaembed mention already exists (idempotency)
+        if "github.com/vespaai-playground/vespaembed" in content:
+            return
+
+        # Insert vespaembed mention after the first heading
+        vespaembed_mention = (
+            "\n> This model was trained using " "[vespaembed](https://github.com/vespaai-playground/vespaembed).\n"
+        )
+
+        # Find the first heading and insert after it
+        lines = content.split("\n")
+        new_lines = []
+        inserted = False
+
+        for line in lines:
+            new_lines.append(line)
+            # Insert after the first markdown heading (starting with #)
+            if not inserted and line.startswith("# ") and not line.startswith("# For reference"):
+                new_lines.append(vespaembed_mention)
+                inserted = True
+
+        if inserted:
+            readme_path.write_text("\n".join(new_lines), encoding="utf-8")
+
     def _push_to_hub(self, repo_id: str) -> None:
         """Push the model to HuggingFace Hub.
 
@@ -502,3 +544,30 @@ class VespaEmbedTrainer:
         else:
             # Standard or LoRA (PEFT) save
             self.model.push_to_hub(repo_id, token=HF_TOKEN_ENV, private=True)
+
+        # Upload the modified README.md with vespaembed mention
+        self._upload_readme_to_hub(repo_id)
+
+    def _upload_readme_to_hub(self, repo_id: str) -> None:
+        """Upload the modified README.md to HuggingFace Hub.
+
+        This uploads the local README.md (which contains the vespaembed mention)
+        to overwrite the auto-generated one on the hub.
+        """
+        from huggingface_hub import HfApi
+
+        # Get the local README.md path from the final output directory
+        output_dir = Path(self.config.output.dir)
+        readme_path = output_dir / "final" / "README.md"
+
+        if not readme_path.exists():
+            logger.warning(f"README.md not found at {readme_path}, skipping upload")
+            return
+
+        api = HfApi()
+        api.upload_file(
+            path_or_fileobj=str(readme_path),
+            path_in_repo="README.md",
+            repo_id=repo_id,
+            token=HF_TOKEN_ENV,
+        )
