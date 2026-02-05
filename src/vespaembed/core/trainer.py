@@ -487,12 +487,19 @@ class VespaEmbedTrainer:
         self._add_vespaembed_to_readme(path)
 
     def _add_vespaembed_to_readme(self, path: Path) -> None:
-        """Add vespaembed mention to the README.md file."""
+        """Add vespaembed mention to the README.md file.
+
+        This method is idempotent - it will not add duplicate mentions if called multiple times.
+        """
         readme_path = path / "README.md"
         if not readme_path.exists():
             return
 
-        content = readme_path.read_text()
+        content = readme_path.read_text(encoding="utf-8")
+
+        # Check if vespaembed mention already exists (idempotency)
+        if "github.com/vespa-engine/vespaembed" in content:
+            return
 
         # Insert vespaembed mention after the first heading
         vespaembed_mention = (
@@ -504,7 +511,7 @@ class VespaEmbedTrainer:
         new_lines = []
         inserted = False
 
-        for i, line in enumerate(lines):
+        for line in lines:
             new_lines.append(line)
             # Insert after the first markdown heading (starting with #)
             if not inserted and line.startswith("# ") and not line.startswith("# For reference"):
@@ -512,7 +519,7 @@ class VespaEmbedTrainer:
                 inserted = True
 
         if inserted:
-            readme_path.write_text("\n".join(new_lines))
+            readme_path.write_text("\n".join(new_lines), encoding="utf-8")
 
     def _push_to_hub(self, repo_id: str) -> None:
         """Push the model to HuggingFace Hub.
