@@ -1,6 +1,6 @@
 [project]
 name = "vespaembed"
-version = "0.0.1"
+version = "0.0.2"
 description = "vespaembed: no-code training for embedding models"
 readme = "README.md"
 requires-python = ">=3.11"
