@@ -18,7 +18,7 @@ class TestAddVespaembedToReadme:
         VespaEmbedTrainer._add_vespaembed_to_readme(trainer, tmp_path)
 
         content = readme_path.read_text(encoding="utf-8")
-        assert "github.com/vespa-engine/vespaembed" in content
+        assert "github.com/vespaai-playground/vespaembed" in content
         assert content.startswith("# My Model\n")
         # Verify the mention comes after the heading
         heading_pos = content.find("# My Model")
@@ -77,7 +77,7 @@ This is the model description."""
 
         content = readme_path.read_text(encoding="utf-8")
         # Should only have one mention
-        assert content.count("github.com/vespa-engine/vespaembed") == 1
+        assert content.count("github.com/vespaai-playground/vespaembed") == 1
 
     def test_preserves_utf8_characters(self, tmp_path: Path):
         """Test that UTF-8 characters are preserved in the README."""
@@ -115,7 +115,7 @@ This is the model description."""
         readme_path = tmp_path / "README.md"
         original_content = """# My Model
 
-> This model was trained using [vespaembed](https://github.com/vespa-engine/vespaembed).
+> This model was trained using [vespaembed](https://github.com/vespaai-playground/vespaembed).
 
 This is the description."""
         readme_path.write_text(original_content, encoding="utf-8")

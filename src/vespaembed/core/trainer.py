@@ -498,12 +498,12 @@ class VespaEmbedTrainer:
         content = readme_path.read_text(encoding="utf-8")
 
         # Check if vespaembed mention already exists (idempotency)
-        if "github.com/vespa-engine/vespaembed" in content:
+        if "github.com/vespaai-playground/vespaembed" in content:
             return
 
         # Insert vespaembed mention after the first heading
         vespaembed_mention = (
-            "\n> This model was trained using " "[vespaembed](https://github.com/vespa-engine/vespaembed).\n"
+            "\n> This model was trained using " "[vespaembed](https://github.com/vespaai-playground/vespaembed).\n"
         )
 
         # Find the first heading and insert after it
