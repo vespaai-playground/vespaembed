@@ -36,6 +36,9 @@ uv sync
 # For Unsloth acceleration (requires NVIDIA/AMD GPU)
 uv sync --extra unsloth
 
+# For TensorBoard metrics visualization
+uv sync --extra tensorboard
+
 # For ONNX export
 uv sync --extra onnx
 
@@ -267,6 +270,13 @@ VespaEmbed automatically recognizes common column name variations:
 | similarity | `sentence2` | `sent2`, `text2`, `positive`, `document` |
 | similarity | `score` | `similarity`, `label`, `sim_score` |
 | tsdae | `text` | `sentence`, `sentences`, `content`, `input` |
+
+**Important:** Loss functions use **column order**, not column names. For example, with a pairs task:
+- `[query, document]` → query is anchor, document is positive ✓
+- `[foo, bar]` → foo is anchor, bar is positive ✓
+- `[document, query]` → document is anchor, query is positive ✗ (reversed!)
+
+The only exception is columns named `score`, `scores`, `label`, or `labels` - these are always treated as labels and removed from the input columns.
 
 ## Development
 

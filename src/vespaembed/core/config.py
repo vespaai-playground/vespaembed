@@ -1,6 +1,6 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from vespaembed.enums import LossVariant, TaskType
 
@@ -29,6 +29,9 @@ class DataConfig(BaseModel):
 
     train: str = Field(..., description="Path to training data (CSV, JSONL, or HF dataset)")
     eval: Optional[str] = Field(None, description="Path to evaluation data (or HF dataset name)")
+    eval_split_pct: Optional[float] = Field(
+        None, description="Percentage of training data to use for evaluation (0.1-50)", ge=0.1, le=50
+    )
     subset: Optional[str] = Field(None, description="HuggingFace dataset subset")
     split: Optional[str] = Field(None, description="HuggingFace dataset split for training")
     eval_split: Optional[str] = Field(None, description="HuggingFace dataset split for evaluation")
@@ -61,16 +64,31 @@ class TrainingHyperparameters(BaseModel):
     """Training hyperparameters."""
 
     epochs: int = Field(3, description="Number of training epochs", ge=1)
+    max_steps: Optional[int] = Field(
+        None, description="Maximum number of training steps (overrides epochs if set)", ge=1
+    )
     batch_size: int = Field(32, description="Batch size", ge=1)
     learning_rate: float = Field(2e-5, description="Learning rate", gt=0)
     warmup_ratio: float = Field(0.1, description="Warmup ratio", ge=0, le=1)
     weight_decay: float = Field(0.01, description="Weight decay", ge=0)
     fp16: bool = Field(True, description="Use FP16 training")
     bf16: bool = Field(False, description="Use BF16 training")
-    eval_steps: int = Field(500, description="Evaluate every N steps", ge=1)
-    save_steps: int = Field(500, description="Save checkpoint every N steps", ge=1)
-    logging_steps: int = Field(100, description="Log every N steps", ge=1)
+    eval_steps: Union[int, float] = Field(0.25, description="Evaluate every N steps or ratio (0-1)")
+    save_steps: Union[int, float] = Field(0.5, description="Save checkpoint every N steps or ratio (0-1)")
+    logging_steps: Union[int, float] = Field(0.02, description="Log every N steps or ratio (0-1)")
     gradient_accumulation_steps: int = Field(1, description="Gradient accumulation steps", ge=1)
+
+    @field_validator("eval_steps", "save_steps", "logging_steps")
+    @classmethod
+    def validate_steps_or_ratio(cls, v):
+        """Validate that steps are either positive integers or ratios between 0 and 1."""
+        if isinstance(v, float):
+            if v <= 0 or v > 1:
+                raise ValueError("Float values must be ratios between 0 and 1 (exclusive of 0, inclusive of 1)")
+        elif isinstance(v, int):
+            if v < 1:
+                raise ValueError("Integer values must be at least 1")
+        return v
 
     # Optimizer and scheduler
     optimizer: OptimizerType = Field(

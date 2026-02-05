@@ -9,7 +9,7 @@ from transformers import TrainerCallback
 
 from vespaembed.core.config import TrainingConfig
 from vespaembed.core.registry import Registry
-from vespaembed.datasets.loader import load_dataset
+from vespaembed.datasets.loader import load_dataset, split_dataset
 from vespaembed.utils.logging import logger
 
 # Get HuggingFace token from environment (fallback for loading private models)
@@ -24,6 +24,7 @@ class ProgressCallback(TrainerCallback):
         self.start_time = None
         self.total_steps = 0
         self.total_epochs = 0
+        self.max_steps_mode = False
 
     def on_train_begin(self, args, state, control, **kwargs):
         """Called at the beginning of training."""
@@ -33,12 +34,17 @@ class ProgressCallback(TrainerCallback):
         self.total_steps = state.max_steps
         self.total_epochs = args.num_train_epochs
 
+        # Check if max_steps is controlling training (user explicitly set it)
+        # In this case, epochs display may be misleading
+        self.max_steps_mode = args.max_steps > 0
+
         if self.callback:
             self.callback(
                 {
                     "type": "train_start",
                     "total_steps": self.total_steps,
-                    "total_epochs": self.total_epochs,
+                    "total_epochs": self.total_epochs if not self.max_steps_mode else None,
+                    "max_steps_mode": self.max_steps_mode,
                 }
             )
 
@@ -50,6 +56,10 @@ class ProgressCallback(TrainerCallback):
             current_step = state.global_step
             elapsed = time.time() - self.start_time if self.start_time else 0
 
+            # Update total_steps from state if it was calculated (might be -1 initially)
+            if state.max_steps > 0 and state.max_steps != self.total_steps:
+                self.total_steps = state.max_steps
+
             # Calculate progress
             progress_pct = (current_step / self.total_steps * 100) if self.total_steps > 0 else 0
             steps_per_sec = current_step / elapsed if elapsed > 0 else 0
@@ -59,7 +69,7 @@ class ProgressCallback(TrainerCallback):
             progress = {
                 "type": "progress",
                 "epoch": state.epoch,
-                "total_epochs": self.total_epochs,
+                "total_epochs": self.total_epochs if not self.max_steps_mode else None,
                 "step": current_step,
                 "total_steps": self.total_steps,
                 "progress_pct": progress_pct,
@@ -68,7 +78,14 @@ class ProgressCallback(TrainerCallback):
                 "steps_per_sec": steps_per_sec,
                 "elapsed_seconds": elapsed,
                 "eta_seconds": eta_seconds,
+                "max_steps_mode": self.max_steps_mode,
             }
+
+            # Add evaluation metrics if present (prefix with eval_)
+            eval_metrics = {k: v for k, v in logs.items() if k.startswith("eval_")}
+            if eval_metrics:
+                progress["eval_metrics"] = eval_metrics
+
             self.callback(progress)
 
     def on_train_end(self, args, state, control, **kwargs):
@@ -350,6 +367,14 @@ class VespaEmbedTrainer:
             eval_data = self.task.prepare_dataset(eval_data)
             evaluator = self.task.get_evaluator(eval_data)
             logger.info(f"Evaluation samples: {len(eval_data)}")
+        elif self.config.data.eval_split_pct:
+            # Auto-split training data for evaluation
+            logger.info(f"Auto-splitting training data: {self.config.data.eval_split_pct}% for evaluation")
+            train_data, eval_data = split_dataset(train_data, self.config.data.eval_split_pct)
+            eval_data = self.task.prepare_dataset(eval_data)
+            evaluator = self.task.get_evaluator(eval_data)
+            logger.info(f"Training samples after split: {len(train_data)}")
+            logger.info(f"Evaluation samples: {len(eval_data)}")
 
         # 5. Create loss function
         loss = self.task.get_loss(self.model)
@@ -372,6 +397,7 @@ class VespaEmbedTrainer:
         args = SentenceTransformerTrainingArguments(
             output_dir=str(output_dir),
             num_train_epochs=self.config.training.epochs,
+            max_steps=self.config.training.max_steps if self.config.training.max_steps else -1,
             per_device_train_batch_size=self.config.training.batch_size,
             per_device_eval_batch_size=self.config.training.batch_size,
             learning_rate=self.config.training.learning_rate,
@@ -384,6 +410,7 @@ class VespaEmbedTrainer:
             gradient_checkpointing=self.config.gradient_checkpointing,
             batch_sampler=self.task.batch_sampler,
             eval_strategy="steps" if evaluator else "no",
+            eval_on_start=True if evaluator else False,
             eval_steps=self.config.training.eval_steps if evaluator else None,
             save_strategy="steps",
             save_steps=self.config.training.save_steps,

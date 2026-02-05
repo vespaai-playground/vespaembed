@@ -102,10 +102,6 @@
                 </div>
                 <div class="metrics-bar">
                     <div class="metric">
-                        <span class="metric-val" id="current-epoch">0</span>
-                        <span class="metric-label">epoch</span>
-                    </div>
-                    <div class="metric">
                         <span class="metric-val" id="current-step">0</span>
                         <span class="metric-label">steps</span>
                     </div>
@@ -155,17 +151,12 @@
                 </div>
             </div>
 
-            <!-- Progress Bar (Bottom) -->
-            <div class="progress-container" id="progress-container" style="display: none;">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
-                </div>
-                <div class="progress-text">
-                    <span id="progress-pct">0%</span>
-                    <span id="progress-speed">-- it/s</span>
-                </div>
-            </div>
         </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <span>vespaembed v{{ version }}</span>
+        </footer>
     </div>
 
     <!-- New Training Modal (Multi-Step Wizard) -->
@@ -252,6 +243,9 @@
                                             <span class="upload-text" id="train_file_info">CSV or JSONL</span>
                                         </div>
                                         <input type="hidden" id="train_filename" name="train_filename">
+                                        <div class="hint" style="font-size: 12px; color: #666; margin-top: 4px;">
+                                            Column <strong>order</strong> matters, not names. 1st col = anchor, 2nd = positive, etc.
+                                        </div>
                                     </div>
 
                                     <!-- Evaluation Data (Optional) -->
@@ -263,6 +257,17 @@
                                             <span class="upload-text" id="eval_file_info">CSV or JSONL</span>
                                         </div>
                                         <input type="hidden" id="eval_filename" name="eval_filename">
+
+                                        <!-- Auto-split option -->
+                                        <div style="margin-top: 10px;">
+                                            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                                                <input type="checkbox" id="auto_split_eval">
+                                                Auto-split from training data:
+                                                <input type="number" id="eval_split_pct" name="eval_split_pct"
+                                                       value="1" min="0.1" max="50" step="0.1"
+                                                       style="width: 60px; padding: 4px;" disabled>%
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -293,6 +298,16 @@
                                                placeholder="validation">
                                     </div>
                                 </div>
+                                <!-- Auto-split option for HF datasets -->
+                                <div style="margin-top: 10px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                                        <input type="checkbox" id="hf_auto_split_eval">
+                                        No eval split? Auto-split from train:
+                                        <input type="number" id="hf_eval_split_pct" name="hf_eval_split_pct"
+                                               value="1" min="0.1" max="50" step="0.1"
+                                               style="width: 60px; padding: 4px;" disabled>%
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -318,6 +333,10 @@
                             <div class="form-field compact">
                                 <label>Epochs</label>
                                 <input type="number" id="epochs" name="epochs" value="3" min="1">
+                            </div>
+                            <div class="form-field compact">
+                                <label>Max Steps</label>
+                                <input type="number" id="max_steps" name="max_steps" placeholder="Overrides epochs" min="1">
                             </div>
                             <div class="form-field compact">
                                 <label>Batch Size</label>
@@ -408,16 +427,16 @@
                                 <input type="number" id="gradient_accumulation_steps" name="gradient_accumulation_steps" value="1" min="1">
                             </div>
                             <div class="form-field compact">
-                                <label>Logging Steps</label>
-                                <input type="number" id="logging_steps" name="logging_steps" value="100" min="1">
+                                <label>Logging (Steps or Ratio)</label>
+                                <input type="number" id="logging_steps" name="logging_steps" value="0.02" min="0" step="any" placeholder="0.02 or 100">
                             </div>
                             <div class="form-field compact">
-                                <label>Eval Steps</label>
-                                <input type="number" id="eval_steps" name="eval_steps" value="500" min="1">
+                                <label>Eval (Steps or Ratio)</label>
+                                <input type="number" id="eval_steps" name="eval_steps" value="0.25" min="0" step="any" placeholder="0.25 or 500">
                             </div>
                             <div class="form-field compact">
-                                <label>Save Steps</label>
-                                <input type="number" id="save_steps" name="save_steps" value="500" min="1">
+                                <label>Save (Steps or Ratio)</label>
+                                <input type="number" id="save_steps" name="save_steps" value="0.5" min="0" step="any" placeholder="0.5 or 500">
                             </div>
                         </div>
                     </div>

@@ -23,13 +23,12 @@ dependencies = [
     "websockets>=12.0",
     "jinja2>=3.1.0",
     "pyyaml>=6.0.0",
-    "tensorboard>=2.15.0",
     "peft>=0.18.1",
-    "unsloth>=2026.1.4",
 ]
 
 [project.optional-dependencies]
-unsloth = ["unsloth"]
+unsloth = ["unsloth>=2026.1.4"]
+tensorboard = ["tensorboard>=2.15.0"]
 onnx = ["onnx>=1.14.0", "onnxruntime>=1.23.2"]
 dev = [
     "black==26.1.0",

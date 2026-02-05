@@ -78,3 +78,24 @@ def get_columns(dataset: Dataset) -> list[str]:
         List of column names
     """
     return dataset.column_names
+
+
+def split_dataset(dataset: Dataset, eval_pct: float) -> tuple[Dataset, Dataset]:
+    """Split a dataset into train and eval sets.
+
+    Args:
+        dataset: Dataset to split
+        eval_pct: Percentage of data to use for evaluation (0.1-50)
+
+    Returns:
+        Tuple of (train_dataset, eval_dataset)
+    """
+    if eval_pct <= 0 or eval_pct > 50:
+        raise ValueError("eval_pct must be between 0.1 and 50")
+
+    # Convert percentage to ratio
+    eval_ratio = eval_pct / 100.0
+
+    # Use train_test_split
+    split_data = dataset.train_test_split(test_size=eval_ratio, seed=42)
+    return split_data["train"], split_data["test"]
