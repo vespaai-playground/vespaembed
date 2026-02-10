@@ -79,6 +79,23 @@ class TestDataConfig:
         config3 = DataConfig(train="train.csv", eval_split_pct=10.0)
         assert config3.eval_split_pct == 10.0
 
+    def test_eval_and_eval_split_pct_mutual_exclusivity(self):
+        """Test that eval and eval_split_pct cannot both be set."""
+        with pytest.raises(ValueError, match="Cannot specify both"):
+            DataConfig(train="train.csv", eval="eval.csv", eval_split_pct=10.0)
+
+    def test_eval_or_eval_split_pct_individually(self):
+        """Test that eval or eval_split_pct can be set individually."""
+        # Only eval
+        config1 = DataConfig(train="train.csv", eval="eval.csv")
+        assert config1.eval == "eval.csv"
+        assert config1.eval_split_pct is None
+
+        # Only eval_split_pct
+        config2 = DataConfig(train="train.csv", eval_split_pct=10.0)
+        assert config2.eval is None
+        assert config2.eval_split_pct == 10.0
+
 
 class TestTrainingHyperparameters:
     """Test TrainingHyperparameters model."""

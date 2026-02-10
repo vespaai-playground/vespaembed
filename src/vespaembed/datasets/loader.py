@@ -90,7 +90,7 @@ def split_dataset(dataset: Dataset, eval_pct: float) -> tuple[Dataset, Dataset]:
     Returns:
         Tuple of (train_dataset, eval_dataset)
     """
-    if eval_pct <= 0 or eval_pct > 50:
+    if eval_pct < 0.1 or eval_pct > 50:
         raise ValueError("eval_pct must be between 0.1 and 50")
 
     # Convert percentage to ratio

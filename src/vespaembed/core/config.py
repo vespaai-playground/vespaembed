@@ -1,6 +1,6 @@
 from typing import Literal, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from vespaembed.enums import LossVariant, TaskType
 
@@ -35,6 +35,13 @@ class DataConfig(BaseModel):
     subset: Optional[str] = Field(None, description="HuggingFace dataset subset")
     split: Optional[str] = Field(None, description="HuggingFace dataset split for training")
     eval_split: Optional[str] = Field(None, description="HuggingFace dataset split for evaluation")
+
+    @model_validator(mode="after")
+    def check_eval_mutual_exclusivity(self):
+        """Ensure eval and eval_split_pct are mutually exclusive."""
+        if self.eval is not None and self.eval_split_pct is not None:
+            raise ValueError("Cannot specify both 'eval' and 'eval_split_pct'. Use one or the other.")
+        return self
 
 
 class LoraConfig(BaseModel):

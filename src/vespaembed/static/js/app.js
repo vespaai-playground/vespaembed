@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupLoraToggle();
     setupUnslothToggle();
     setupMatryoshkaToggle();
+    setupAdvancedToggle();
     setupTaskSelector();
     setupWizard();
     setupArtifactsModal();
@@ -451,11 +452,22 @@ function resetFormToTaskDefaults() {
     document.getElementById('train-upload').classList.remove('uploaded');
     document.getElementById('eval-upload').classList.remove('uploaded');
 
+    // Reset auto-split controls
+    document.getElementById('auto_split_eval').checked = false;
+    document.getElementById('auto_split_eval').disabled = false;
+    document.getElementById('eval_split_pct').disabled = true;
+
     // Reset HF dataset fields
     document.getElementById('hf_dataset').value = '';
     document.getElementById('hf_subset').value = '';
     document.getElementById('hf_train_split').value = 'train';
     document.getElementById('hf_eval_split').value = '';
+    document.getElementById('hf_eval_split').disabled = false;
+
+    // Reset HF auto-split controls
+    document.getElementById('hf_auto_split_eval').checked = false;
+    document.getElementById('hf_auto_split_eval').disabled = false;
+    document.getElementById('hf_eval_split_pct').disabled = true;
 
     // Reset hub settings
     document.getElementById('push_to_hub').checked = false;
@@ -615,9 +627,21 @@ function setupMatryoshkaToggle() {
     });
 }
 
+// Advanced Options Collapsible
+function setupAdvancedToggle() {
+    const toggle = document.getElementById('advanced-toggle');
+    const content = document.getElementById('advanced-content');
+    const icon = toggle.querySelector('.collapsible-icon');
+
+    toggle.addEventListener('click', () => {
+        const isExpanded = content.classList.toggle('expanded');
+        icon.textContent = isExpanded ? '▲' : '▼';
+    });
+}
+
 // Wizard Navigation
 let currentWizardStep = 1;
-const totalWizardSteps = 3;
+const totalWizardSteps = 2;
 
 function setupWizard() {
     const nextBtn = document.getElementById('wizard-next');
@@ -813,14 +837,6 @@ function setupAutoSplit() {
         }
     });
 
-    // Also check when eval filename is cleared
-    const observer = new MutationObserver(() => {
-        if (!evalFilenameInput.value) {
-            autoSplitCheckbox.disabled = false;
-        }
-    });
-    observer.observe(evalFilenameInput, { attributes: true, attributeFilter: ['value'] });
-
     // HuggingFace auto-split
     const hfAutoSplitCheckbox = document.getElementById('hf_auto_split_eval');
     const hfSplitPctInput = document.getElementById('hf_eval_split_pct');
@@ -884,16 +900,13 @@ async function handleTrainSubmit(e) {
             alert(`${field.name} steps/ratio must be greater than 0`);
             return;
         }
-        // If it's a float, validate it's a ratio between 0 and 1
-        if (value < 1 && value !== Math.floor(value)) {
-            if (value > 1) {
-                alert(`${field.name}: Float values must be ratios between 0 and 1 (e.g., 0.1 for 10%)`);
-                return;
-            }
-        }
-        // If it's meant to be an integer (value >= 1), check it
-        if (value >= 1 && value !== Math.floor(value)) {
-            alert(`${field.name}: Integer values (>= 1) must be whole numbers (e.g., 100, 500)`);
+        // Ratios must be between 0 and 1 (exclusive of 0, inclusive of 1)
+        // Step counts must be integers >= 1
+        if (value < 1) {
+            // It's a ratio - valid (already checked > 0)
+        } else if (value !== Math.floor(value)) {
+            // It's >= 1 but not a whole number - invalid
+            alert(`${field.name}: Values >= 1 must be whole numbers (e.g., 100, 500). Use decimals < 1 for ratios (e.g., 0.1 for 10%)`);
             return;
         }
     }

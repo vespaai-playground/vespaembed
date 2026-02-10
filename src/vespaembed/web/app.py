@@ -101,7 +101,7 @@ class TrainRequest(BaseModel):
     train_filename: Optional[str] = Field(None, description="Path to uploaded training file")
     eval_filename: Optional[str] = Field(None, description="Path to uploaded evaluation file (optional)")
     eval_split_pct: Optional[float] = Field(
-        None, description="Percentage of training data to use for evaluation (0.1-50)"
+        None, description="Percentage of training data to use for evaluation (0.1-50)", ge=0.1, le=50
     )
 
     # HuggingFace dataset (alternative to file upload)

@@ -271,12 +271,12 @@ VespaEmbed automatically recognizes common column name variations:
 | similarity | `score` | `similarity`, `label`, `sim_score` |
 | tsdae | `text` | `sentence`, `sentences`, `content`, `input` |
 
-**Important:** Loss functions use **column order**, not column names. For example, with a pairs task:
-- `[query, document]` → query is anchor, document is positive ✓
-- `[foo, bar]` → foo is anchor, bar is positive ✓
-- `[document, query]` → document is anchor, query is positive ✗ (reversed!)
+**Important:** Columns are matched by **name** (or alias), not by position. For example, with a pairs task:
+- `[anchor, positive]` or `[query, document]` → works ✓
+- `[document, query]` → still works (names identify roles, not position) ✓
+- `[foo, bar]` → fails (no matching column names or aliases) ✗
 
-The only exception is columns named `score`, `scores`, `label`, or `labels` - these are always treated as labels and removed from the input columns.
+Columns named `score`, `scores`, `label`, or `labels` (and aliases like `similarity`) are treated as labels/targets.
 
 ## Development
 
