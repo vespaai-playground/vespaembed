@@ -22,27 +22,25 @@ No-code training for embedding models. Train custom embedding models with a web 
 
 ## Installation
 
-> **Note:** VespaEmbed is in experimental phase. Install from source.
-
 ```bash
-git clone https://github.com/vespaai-playground/vespaembed.git
-cd vespaembed
-uv sync
+pip install vespaembed
 ```
 
 ### Optional Dependencies
 
 ```bash
 # For Unsloth acceleration (requires NVIDIA/AMD GPU)
-uv sync --extra unsloth
-
-# For TensorBoard metrics visualization
-uv sync --extra tensorboard
+pip install vespaembed[unsloth]
 
 # For ONNX export
-uv sync --extra onnx
+pip install vespaembed[onnx]
+```
 
-# For development
+### Development Installation
+
+```bash
+git clone https://github.com/vespaai-playground/vespaembed.git
+cd vespaembed
 uv sync --extra dev
 ```
 
@@ -281,9 +279,6 @@ Columns named `score`, `scores`, `label`, or `labels` (and aliases like `similar
 ## Development
 
 ```bash
-# Install dev dependencies
-uv sync --extra dev
-
 # Run tests
 uv run pytest tests/
 
