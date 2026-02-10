@@ -33,11 +33,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadRuns(true); // Auto-select latest run on initial load
     setupEventListeners();
     setupFileUploads();
+    setupAutoSplit();
     setupTabs();
     setupHubToggle();
     setupLoraToggle();
     setupUnslothToggle();
     setupMatryoshkaToggle();
+    setupAdvancedToggle();
     setupTaskSelector();
     setupWizard();
     setupArtifactsModal();
@@ -216,7 +218,7 @@ function updateLossVariantUI(task) {
         // Update hint based on task type
         if (hintEl) {
             if (task.name === 'pairs' || task.name === 'triplets' || task.name === 'matryoshka') {
-                hintEl.textContent = 'MNR uses in-batch negatives. GIST uses a guide model for better negatives.';
+                hintEl.textContent = 'MNR uses in-batch negatives. GIST filters false negatives using the model itself as guide.';
             } else if (task.name === 'similarity') {
                 hintEl.textContent = 'CoSENT and AnglE often outperform Cosine on STS benchmarks.';
             } else {
@@ -450,11 +452,22 @@ function resetFormToTaskDefaults() {
     document.getElementById('train-upload').classList.remove('uploaded');
     document.getElementById('eval-upload').classList.remove('uploaded');
 
+    // Reset auto-split controls
+    document.getElementById('auto_split_eval').checked = false;
+    document.getElementById('auto_split_eval').disabled = false;
+    document.getElementById('eval_split_pct').disabled = true;
+
     // Reset HF dataset fields
     document.getElementById('hf_dataset').value = '';
     document.getElementById('hf_subset').value = '';
     document.getElementById('hf_train_split').value = 'train';
     document.getElementById('hf_eval_split').value = '';
+    document.getElementById('hf_eval_split').disabled = false;
+
+    // Reset HF auto-split controls
+    document.getElementById('hf_auto_split_eval').checked = false;
+    document.getElementById('hf_auto_split_eval').disabled = false;
+    document.getElementById('hf_eval_split_pct').disabled = true;
 
     // Reset hub settings
     document.getElementById('push_to_hub').checked = false;
@@ -614,9 +627,21 @@ function setupMatryoshkaToggle() {
     });
 }
 
+// Advanced Options Collapsible
+function setupAdvancedToggle() {
+    const toggle = document.getElementById('advanced-toggle');
+    const content = document.getElementById('advanced-content');
+    const icon = toggle.querySelector('.collapsible-icon');
+
+    toggle.addEventListener('click', () => {
+        const isExpanded = content.classList.toggle('expanded');
+        icon.textContent = isExpanded ? '▲' : '▼';
+    });
+}
+
 // Wizard Navigation
 let currentWizardStep = 1;
-const totalWizardSteps = 3;
+const totalWizardSteps = 2;
 
 function setupWizard() {
     const nextBtn = document.getElementById('wizard-next');
@@ -788,6 +813,59 @@ async function handleFileUpload(file, fileType, uploadBox, fileInfo, hiddenInput
     }
 }
 
+// Auto-split evaluation data
+function setupAutoSplit() {
+    // File upload auto-split
+    const autoSplitCheckbox = document.getElementById('auto_split_eval');
+    const splitPctInput = document.getElementById('eval_split_pct');
+    const evalFileInput = document.getElementById('eval_file');
+    const evalFilenameInput = document.getElementById('eval_filename');
+
+    // Enable/disable percentage input based on checkbox
+    autoSplitCheckbox.addEventListener('change', () => {
+        splitPctInput.disabled = !autoSplitCheckbox.checked;
+    });
+
+    // Disable auto-split if eval file is uploaded
+    evalFileInput.addEventListener('change', () => {
+        if (evalFileInput.files.length > 0) {
+            autoSplitCheckbox.disabled = true;
+            autoSplitCheckbox.checked = false;
+            splitPctInput.disabled = true;
+        } else {
+            autoSplitCheckbox.disabled = false;
+        }
+    });
+
+    // HuggingFace auto-split
+    const hfAutoSplitCheckbox = document.getElementById('hf_auto_split_eval');
+    const hfSplitPctInput = document.getElementById('hf_eval_split_pct');
+    const hfEvalSplitInput = document.getElementById('hf_eval_split');
+
+    // Enable/disable percentage input based on checkbox
+    hfAutoSplitCheckbox.addEventListener('change', () => {
+        hfSplitPctInput.disabled = !hfAutoSplitCheckbox.checked;
+        // Disable eval split input when auto-split is enabled
+        if (hfAutoSplitCheckbox.checked) {
+            hfEvalSplitInput.disabled = true;
+            hfEvalSplitInput.value = '';
+        } else {
+            hfEvalSplitInput.disabled = false;
+        }
+    });
+
+    // Disable auto-split if eval split is specified
+    hfEvalSplitInput.addEventListener('input', () => {
+        if (hfEvalSplitInput.value.trim()) {
+            hfAutoSplitCheckbox.disabled = true;
+            hfAutoSplitCheckbox.checked = false;
+            hfSplitPctInput.disabled = true;
+        } else {
+            hfAutoSplitCheckbox.disabled = false;
+        }
+    });
+}
+
 // Training
 async function handleTrainSubmit(e) {
     e.preventDefault();
@@ -805,6 +883,34 @@ async function handleTrainSubmit(e) {
         return;
     }
 
+    // Validate steps/ratio fields
+    const stepsFields = [
+        { id: 'logging_steps', name: 'Logging' },
+        { id: 'eval_steps', name: 'Eval' },
+        { id: 'save_steps', name: 'Save' }
+    ];
+
+    for (const field of stepsFields) {
+        const value = parseFloat(document.getElementById(field.id).value);
+        if (isNaN(value)) {
+            alert(`${field.name} steps/ratio must be a valid number`);
+            return;
+        }
+        if (value <= 0) {
+            alert(`${field.name} steps/ratio must be greater than 0`);
+            return;
+        }
+        // Ratios must be between 0 and 1 (exclusive of 0, inclusive of 1)
+        // Step counts must be integers >= 1
+        if (value < 1) {
+            // It's a ratio - valid (already checked > 0)
+        } else if (value !== Math.floor(value)) {
+            // It's >= 1 but not a whole number - invalid
+            alert(`${field.name}: Values >= 1 must be whole numbers (e.g., 100, 500). Use decimals < 1 for ratios (e.g., 0.1 for 10%)`);
+            return;
+        }
+    }
+
     // Get selected precision mode
     const precision = document.getElementById('precision').value || 'fp32';
 
@@ -820,6 +926,9 @@ async function handleTrainSubmit(e) {
         base_model: document.getElementById('base_model').value,
         loss_variant: lossVariant,
         epochs: parseInt(document.getElementById('epochs').value),
+        max_steps: document.getElementById('max_steps').value
+            ? parseInt(document.getElementById('max_steps').value)
+            : null,
         batch_size: parseInt(document.getElementById('batch_size').value),
         learning_rate: parseFloat(document.getElementById('learning_rate').value),
 
@@ -827,9 +936,9 @@ async function handleTrainSubmit(e) {
         warmup_ratio: parseFloat(document.getElementById('warmup_ratio').value),
         weight_decay: parseFloat(document.getElementById('weight_decay').value),
         gradient_accumulation_steps: parseInt(document.getElementById('gradient_accumulation_steps').value),
-        logging_steps: parseInt(document.getElementById('logging_steps').value),
-        eval_steps: parseInt(document.getElementById('eval_steps').value),
-        save_steps: parseInt(document.getElementById('save_steps').value),
+        logging_steps: parseFloat(document.getElementById('logging_steps').value),
+        eval_steps: parseFloat(document.getElementById('eval_steps').value),
+        save_steps: parseFloat(document.getElementById('save_steps').value),
         fp16: precision === 'fp16',
         bf16: precision === 'bf16',
         optimizer: document.getElementById('optimizer').value,
@@ -870,6 +979,12 @@ async function handleTrainSubmit(e) {
         formData.train_filename = document.getElementById('train_filename').value;
         formData.eval_filename = document.getElementById('eval_filename').value || null;
 
+        // Auto-split evaluation data
+        const autoSplit = document.getElementById('auto_split_eval').checked;
+        if (autoSplit && !formData.eval_filename) {
+            formData.eval_split_pct = parseFloat(document.getElementById('eval_split_pct').value);
+        }
+
         if (!formData.train_filename) {
             alert('Please upload training data');
             return;
@@ -879,6 +994,12 @@ async function handleTrainSubmit(e) {
         formData.hf_subset = document.getElementById('hf_subset').value.trim() || null;
         formData.hf_train_split = document.getElementById('hf_train_split').value.trim() || 'train';
         formData.hf_eval_split = document.getElementById('hf_eval_split').value.trim() || null;
+
+        // Auto-split for HuggingFace datasets
+        const hfAutoSplit = document.getElementById('hf_auto_split_eval').checked;
+        if (hfAutoSplit && !formData.hf_eval_split) {
+            formData.eval_split_pct = parseFloat(document.getElementById('hf_eval_split_pct').value);
+        }
 
         if (!formData.hf_dataset) {
             alert('Please enter a HuggingFace dataset name');
@@ -953,8 +1074,6 @@ async function stopTraining() {
             const statusEl = document.getElementById('summary-status');
             statusEl.textContent = 'stopped';
             statusEl.className = 'status-chip small stopped';
-            // Hide progress bar
-            document.getElementById('progress-container').style.display = 'none';
             // Refresh run list to get updated status
             await loadRuns();
         }
@@ -1051,14 +1170,9 @@ async function selectRun(runId) {
     clearLogs();
 
     // Reset progress display
-    document.getElementById('current-epoch').textContent = '0';
     document.getElementById('current-step').textContent = '0';
     document.getElementById('current-loss').textContent = '--';
     document.getElementById('current-eta').textContent = '--';
-    document.getElementById('progress-container').style.display = 'none';
-    document.getElementById('progress-fill').style.width = '0%';
-    document.getElementById('progress-pct').textContent = '0%';
-    document.getElementById('progress-speed').textContent = '-- it/s';
     document.getElementById('status-banner').style.display = 'none';
 
     try {
@@ -1071,9 +1185,6 @@ async function selectRun(runId) {
 
         // Load metrics from TensorBoard files for this run
         await loadMetrics(runId);
-
-        // Show progress bar for all runs
-        document.getElementById('progress-container').style.display = 'block';
 
         // Update header display based on run status
         if (run.status === 'running') {
@@ -1091,13 +1202,6 @@ async function selectRun(runId) {
                 if (finalLoss && finalLoss.value !== null) {
                     document.getElementById('current-loss').textContent = finalLoss.value.toFixed(4);
                 }
-            }
-
-            // For completed runs, show 100% progress
-            if (run.status === 'completed') {
-                document.getElementById('progress-fill').style.width = '100%';
-                document.getElementById('progress-pct').textContent = '100%';
-                document.getElementById('progress-speed').textContent = 'Complete';
             }
         }
     } catch (error) {
@@ -1198,29 +1302,18 @@ function updateProgress(data) {
     const progressType = data.type || 'progress';
 
     if (progressType === 'train_start') {
-        // Hide status banner and show progress bar when training starts
+        // Hide status banner when training starts
         hideStatusBanner();
-        document.getElementById('progress-container').style.display = 'block';
-        document.getElementById('progress-fill').style.width = '0%';
-        document.getElementById('progress-pct').textContent = '0%';
-        document.getElementById('progress-speed').textContent = '-- it/s';
         return;
     }
 
     if (progressType === 'train_end') {
-        // Training complete - fill bar to 100%
-        document.getElementById('progress-fill').style.width = '100%';
-        document.getElementById('progress-pct').textContent = '100%';
-        document.getElementById('progress-speed').textContent = 'Complete';
+        // Training complete
         document.getElementById('current-eta').textContent = 'Done';
         return;
     }
 
     // Update metrics display
-    const totalEpochs = data.total_epochs || 0;
-    const epochDisplay = totalEpochs ? `${data.epoch?.toFixed(1) || 0}/${totalEpochs}` : (data.epoch?.toFixed(2) || 0);
-    document.getElementById('current-epoch').textContent = epochDisplay;
-
     const totalSteps = data.total_steps || 0;
     const stepDisplay = totalSteps ? `${data.step || 0}/${totalSteps}` : (data.step || 0);
     document.getElementById('current-step').textContent = stepDisplay;
@@ -1230,18 +1323,6 @@ function updateProgress(data) {
     // Update ETA
     if (data.eta_seconds && data.eta_seconds > 0) {
         document.getElementById('current-eta').textContent = formatTime(data.eta_seconds);
-    }
-
-    // Update progress bar
-    if (data.progress_pct !== undefined) {
-        document.getElementById('progress-container').style.display = 'block';
-        document.getElementById('progress-fill').style.width = `${data.progress_pct}%`;
-        document.getElementById('progress-pct').textContent = `${data.progress_pct.toFixed(1)}%`;
-    }
-
-    // Update speed
-    if (data.steps_per_sec) {
-        document.getElementById('progress-speed').textContent = `${data.steps_per_sec.toFixed(2)} it/s`;
     }
 
     if (data.step && data.loss) {
@@ -1295,7 +1376,6 @@ function handleTrainingComplete(data) {
     hideStatusBanner();
     // Hide stop button and update status
     document.getElementById('stop-btn').style.display = 'none';
-    document.getElementById('progress-container').style.display = 'none';
     const statusEl = document.getElementById('summary-status');
     statusEl.textContent = 'completed';
     statusEl.className = 'status-chip small completed';
@@ -1308,7 +1388,6 @@ function handleTrainingError(data) {
     hideStatusBanner();
     // Hide stop button and update status
     document.getElementById('stop-btn').style.display = 'none';
-    document.getElementById('progress-container').style.display = 'none';
     const statusEl = document.getElementById('summary-status');
     statusEl.textContent = 'error';
     statusEl.className = 'status-chip small error';
@@ -1335,7 +1414,11 @@ function updateMetricSelector() {
     const select = document.getElementById('metric-select');
 
     // Filter to only metrics with multiple valid data points (single-point metrics are useless for charts)
+    // Also exclude epoch-related metrics as they're not useful for charting
     const availableMetrics = Object.keys(metricsData).filter(key => {
+        const keyLower = key.toLowerCase();
+        // Skip epoch metrics
+        if (keyLower === 'epoch' || keyLower.includes('epoch')) return false;
         const data = metricsData[key];
         if (!data || data.length < 2) return false;  // Need at least 2 points for a line chart
         return data.filter(d => d.value !== null).length >= 2;
@@ -1449,11 +1532,19 @@ async function loadArtifacts(runId) {
                         <span>${formatFileSize(artifact.size)}</span>
                     </div>
                 </div>
-                <button class="artifact-download" onclick="copyArtifactPath('${artifact.path.replace(/'/g, "\\'")}')">
+                <button class="artifact-download" data-path="${artifact.path.replace(/"/g, '&quot;')}">
                     Copy Path
                 </button>
             </div>
         `).join('');
+
+        // Add event delegation for copy buttons
+        listEl.querySelectorAll('.artifact-download').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const path = this.getAttribute('data-path');
+                copyArtifactPath(path, this);
+            });
+        });
 
         pathEl.textContent = data.output_dir;
     } catch (error) {
@@ -1462,10 +1553,9 @@ async function loadArtifacts(runId) {
     }
 }
 
-function copyArtifactPath(path) {
+function copyArtifactPath(path, btn) {
     navigator.clipboard.writeText(path).then(() => {
         // Brief visual feedback
-        const btn = event.target;
         const originalText = btn.textContent;
         btn.textContent = 'Copied!';
         setTimeout(() => {

@@ -36,6 +36,9 @@ uv sync
 # For Unsloth acceleration (requires NVIDIA/AMD GPU)
 uv sync --extra unsloth
 
+# For TensorBoard metrics visualization
+uv sync --extra tensorboard
+
 # For ONNX export
 uv sync --extra onnx
 
@@ -267,6 +270,13 @@ VespaEmbed automatically recognizes common column name variations:
 | similarity | `sentence2` | `sent2`, `text2`, `positive`, `document` |
 | similarity | `score` | `similarity`, `label`, `sim_score` |
 | tsdae | `text` | `sentence`, `sentences`, `content`, `input` |
+
+**Important:** Columns are matched by **name** (or alias), not by position. For example, with a pairs task:
+- `[anchor, positive]` or `[query, document]` → works ✓
+- `[document, query]` → still works (names identify roles, not position) ✓
+- `[foo, bar]` → fails (no matching column names or aliases) ✗
+
+Columns named `score`, `scores`, `label`, or `labels` (and aliases like `similarity`) are treated as labels/targets.
 
 ## Development
 

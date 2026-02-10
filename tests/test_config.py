@@ -30,6 +30,7 @@ class TestDataConfig:
         config = DataConfig(train="data.csv")
         assert config.train == "data.csv"
         assert config.eval is None
+        assert config.eval_split_pct is None
         assert config.subset is None
         assert config.split is None
 
@@ -48,6 +49,53 @@ class TestDataConfig:
         assert config.split == "train"
         assert config.eval_split == "validation"
 
+    def test_eval_split_pct(self):
+        """Test eval_split_pct configuration."""
+        config = DataConfig(train="train.csv", eval_split_pct=1.0)
+        assert config.train == "train.csv"
+        assert config.eval_split_pct == 1.0
+
+    def test_eval_split_pct_range_min(self):
+        """Test that eval_split_pct must be at least 0.1."""
+        with pytest.raises(ValueError):
+            DataConfig(train="train.csv", eval_split_pct=0.05)
+
+    def test_eval_split_pct_range_max(self):
+        """Test that eval_split_pct must be at most 50."""
+        with pytest.raises(ValueError):
+            DataConfig(train="train.csv", eval_split_pct=51.0)
+
+    def test_eval_split_pct_valid_range(self):
+        """Test valid eval_split_pct values."""
+        # Test minimum
+        config1 = DataConfig(train="train.csv", eval_split_pct=0.1)
+        assert config1.eval_split_pct == 0.1
+
+        # Test maximum
+        config2 = DataConfig(train="train.csv", eval_split_pct=50.0)
+        assert config2.eval_split_pct == 50.0
+
+        # Test typical value
+        config3 = DataConfig(train="train.csv", eval_split_pct=10.0)
+        assert config3.eval_split_pct == 10.0
+
+    def test_eval_and_eval_split_pct_mutual_exclusivity(self):
+        """Test that eval and eval_split_pct cannot both be set."""
+        with pytest.raises(ValueError, match="Cannot specify both"):
+            DataConfig(train="train.csv", eval="eval.csv", eval_split_pct=10.0)
+
+    def test_eval_or_eval_split_pct_individually(self):
+        """Test that eval or eval_split_pct can be set individually."""
+        # Only eval
+        config1 = DataConfig(train="train.csv", eval="eval.csv")
+        assert config1.eval == "eval.csv"
+        assert config1.eval_split_pct is None
+
+        # Only eval_split_pct
+        config2 = DataConfig(train="train.csv", eval_split_pct=10.0)
+        assert config2.eval is None
+        assert config2.eval_split_pct == 10.0
+
 
 class TestTrainingHyperparameters:
     """Test TrainingHyperparameters model."""
@@ -56,15 +104,16 @@ class TestTrainingHyperparameters:
         """Test default hyperparameter values."""
         config = TrainingHyperparameters()
         assert config.epochs == 3
+        assert config.max_steps is None
         assert config.batch_size == 32
         assert config.learning_rate == 2e-5
         assert config.warmup_ratio == 0.1
         assert config.weight_decay == 0.01
         assert config.fp16 is True
         assert config.bf16 is False
-        assert config.eval_steps == 500
-        assert config.save_steps == 500
-        assert config.logging_steps == 100
+        assert config.eval_steps == 0.25
+        assert config.save_steps == 0.5
+        assert config.logging_steps == 0.02
         assert config.gradient_accumulation_steps == 1
         assert config.optimizer == "adamw_torch"
         assert config.scheduler == "linear"
@@ -107,6 +156,71 @@ class TestTrainingHyperparameters:
         """Test that warmup_ratio is between 0 and 1."""
         with pytest.raises(ValueError):
             TrainingHyperparameters(warmup_ratio=1.5)
+
+    def test_max_steps_optional(self):
+        """Test that max_steps is optional."""
+        config = TrainingHyperparameters(max_steps=1000)
+        assert config.max_steps == 1000
+
+    def test_max_steps_none(self):
+        """Test that max_steps can be None."""
+        config = TrainingHyperparameters()
+        assert config.max_steps is None
+
+    def test_max_steps_positive(self):
+        """Test that max_steps must be positive."""
+        with pytest.raises(ValueError):
+            TrainingHyperparameters(max_steps=0)
+
+    def test_logging_steps_integer(self):
+        """Test logging_steps with integer value."""
+        config = TrainingHyperparameters(logging_steps=100)
+        assert config.logging_steps == 100
+
+    def test_logging_steps_ratio(self):
+        """Test logging_steps with ratio value."""
+        config = TrainingHyperparameters(logging_steps=0.1)
+        assert config.logging_steps == 0.1
+
+    def test_logging_steps_invalid_ratio(self):
+        """Test that logging_steps ratio must be between 0 and 1."""
+        with pytest.raises(ValueError):
+            TrainingHyperparameters(logging_steps=1.5)
+
+    def test_logging_steps_invalid_zero(self):
+        """Test that logging_steps cannot be 0."""
+        with pytest.raises(ValueError):
+            TrainingHyperparameters(logging_steps=0)
+
+    def test_eval_steps_integer(self):
+        """Test eval_steps with integer value."""
+        config = TrainingHyperparameters(eval_steps=500)
+        assert config.eval_steps == 500
+
+    def test_eval_steps_ratio(self):
+        """Test eval_steps with ratio value."""
+        config = TrainingHyperparameters(eval_steps=0.5)
+        assert config.eval_steps == 0.5
+
+    def test_eval_steps_invalid_ratio(self):
+        """Test that eval_steps ratio must be between 0 and 1."""
+        with pytest.raises(ValueError):
+            TrainingHyperparameters(eval_steps=2.0)
+
+    def test_save_steps_integer(self):
+        """Test save_steps with integer value."""
+        config = TrainingHyperparameters(save_steps=1000)
+        assert config.save_steps == 1000
+
+    def test_save_steps_ratio(self):
+        """Test save_steps with ratio value."""
+        config = TrainingHyperparameters(save_steps=0.25)
+        assert config.save_steps == 0.25
+
+    def test_save_steps_invalid_ratio(self):
+        """Test that save_steps ratio must be between 0 and 1."""
+        with pytest.raises(ValueError):
+            TrainingHyperparameters(save_steps=1.1)
 
 
 class TestOutputConfig:

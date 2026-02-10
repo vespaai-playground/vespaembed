@@ -146,6 +146,7 @@ class TrainingWorker:
             data_config = DataConfig(
                 train=train_source,
                 eval=eval_source,
+                eval_split_pct=self.config.get("eval_split_pct"),
                 subset=self.config.get("hf_subset"),
                 split=self.config.get("hf_train_split", "train"),
                 eval_split=eval_split,
@@ -189,15 +190,16 @@ class TrainingWorker:
                 data=data_config,
                 training=TrainingHyperparameters(
                     epochs=self.config.get("epochs", 3),
+                    max_steps=self.config.get("max_steps"),
                     batch_size=self.config.get("batch_size", 32),
                     learning_rate=self.config.get("learning_rate", 2e-5),
                     warmup_ratio=self.config.get("warmup_ratio", 0.1),
                     weight_decay=self.config.get("weight_decay", 0.01),
                     fp16=self.config.get("fp16", False),
                     bf16=self.config.get("bf16", False),
-                    eval_steps=self.config.get("eval_steps", 500),
-                    save_steps=self.config.get("save_steps", 500),
-                    logging_steps=self.config.get("logging_steps", 100),
+                    eval_steps=self.config.get("eval_steps", 0.25),
+                    save_steps=self.config.get("save_steps", 0.5),
+                    logging_steps=self.config.get("logging_steps", 0.02),
                     gradient_accumulation_steps=self.config.get("gradient_accumulation_steps", 1),
                     optimizer=self.config.get("optimizer", "adamw_torch"),
                     scheduler=self.config.get("scheduler", "linear"),
@@ -272,20 +274,26 @@ class TrainingWorker:
         step = progress.get("step", 0)
         total = progress.get("total_steps", 0)
         pct = progress.get("progress_pct", 0)
-        epoch = progress.get("epoch", 0)
-        total_epochs = progress.get("total_epochs", 0)
         loss = progress.get("loss")
         lr = progress.get("learning_rate")
         eta = progress.get("eta_seconds", 0)
 
-        # Format: [Step 100/1000 (10%)] Epoch 1/3 | Loss: 0.5234 | LR: 2.00e-05 | ETA: 5m 30s
+        # Format: [Step 100/1000 (10%)] | Loss: 0.5234 | LR: 2.00e-05 | ETA: 5m 30s
         parts = [f"[Step {step}/{total} ({pct:.0f}%)]"]
-
-        if total_epochs:
-            parts.append(f"Epoch {epoch:.1f}/{total_epochs}")
 
         if loss is not None:
             parts.append(f"Loss: {loss:.4f}")
+
+        # Add evaluation metrics if present
+        eval_metrics = progress.get("eval_metrics", {})
+        if eval_metrics:
+            for key, value in eval_metrics.items():
+                # Remove eval_ prefix and format nicely
+                metric_name = key.replace("eval_", "").replace("_", " ").title()
+                if isinstance(value, float):
+                    parts.append(f"{metric_name}: {value:.4f}")
+                else:
+                    parts.append(f"{metric_name}: {value}")
 
         if lr is not None:
             parts.append(f"LR: {lr:.2e}")

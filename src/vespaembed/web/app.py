@@ -100,6 +100,9 @@ class TrainRequest(BaseModel):
     # Data source - either file upload OR HuggingFace dataset
     train_filename: Optional[str] = Field(None, description="Path to uploaded training file")
     eval_filename: Optional[str] = Field(None, description="Path to uploaded evaluation file (optional)")
+    eval_split_pct: Optional[float] = Field(
+        None, description="Percentage of training data to use for evaluation (0.1-50)", ge=0.1, le=50
+    )
 
     # HuggingFace dataset (alternative to file upload)
     hf_dataset: Optional[str] = Field(
@@ -115,6 +118,7 @@ class TrainRequest(BaseModel):
 
     # Basic hyperparameters
     epochs: int = 3
+    max_steps: Optional[int] = None
     batch_size: int = 32
     learning_rate: float = 2e-5
 
@@ -123,9 +127,9 @@ class TrainRequest(BaseModel):
     weight_decay: float = 0.01
     fp16: bool = False
     bf16: bool = False
-    eval_steps: int = 500
-    save_steps: int = 500
-    logging_steps: int = 100
+    eval_steps: float = 0.25
+    save_steps: float = 0.5
+    logging_steps: float = 0.02
     gradient_accumulation_steps: int = 1
 
     # Optimizer and scheduler
@@ -181,11 +185,20 @@ class UploadResponse(BaseModel):
     row_count: int
 
 
+# Get version from package
+try:
+    from importlib.metadata import version as get_version
+
+    VERSION = get_version("vespaembed")
+except Exception:
+    VERSION = "dev"
+
+
 # Routes
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Serve the main page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request, "version": VERSION})
 
 
 @app.post("/upload", response_model=UploadResponse)

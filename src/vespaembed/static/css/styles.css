@@ -358,7 +358,7 @@ body {
 .main {
     flex: 1;
     padding: var(--space-lg);
-    padding-bottom: 70px; /* Space for fixed progress bar */
+    padding-bottom: 40px; /* Space for fixed footer */
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
@@ -481,39 +481,18 @@ body {
     font-size: var(--font-sm);
 }
 
-/* Progress Bar */
-.progress-container {
+/* App Footer */
+.app-footer {
     position: fixed;
     bottom: 0;
     left: 260px; /* Sidebar width */
     right: 0;
     background: var(--app-background);
     border-top: 1px solid var(--subtle-border);
-    padding: var(--space-sm) var(--space-lg);
-    z-index: 100;
-}
-
-.progress-bar {
-    height: 8px;
-    background: var(--ui-element-background);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    margin-bottom: var(--space-xs);
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--heather-light), var(--heather-dark));
-    border-radius: var(--radius-sm);
-    transition: width 0.3s ease;
-}
-
-.progress-text {
-    display: flex;
-    justify-content: space-between;
+    padding: var(--space-xs) var(--space-lg);
     font-size: var(--font-xs);
     color: var(--low-contrast-text);
-    font-family: var(--mono);
+    text-align: right;
 }
 
 /* Status Banner */
@@ -1518,6 +1497,126 @@ input:disabled {
 
 .checkbox-grid .checkbox-row {
     margin-bottom: 0;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--ui-element-background);
+    border: 1px solid var(--ui-element-border);
+    transition: 0.2s;
+    border-radius: 20px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--low-contrast-text);
+    transition: 0.2s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: var(--accent-background);
+    border-color: var(--accent-background);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(16px);
+    background-color: white;
+}
+
+.toggle-switch input:focus + .toggle-slider {
+    box-shadow: 0 0 0 2px var(--focused-element-border);
+}
+
+/* Auto-split Option Card */
+.autosplit-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--app-background);
+    border: 1px solid var(--subtle-border);
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-sm);
+    transition: all 0.2s;
+}
+
+.autosplit-option:has(input:checked) {
+    border-color: var(--accent-background);
+    background: color-mix(in srgb, var(--accent-background) 5%, var(--app-background));
+}
+
+.autosplit-option .toggle-label {
+    flex: 1;
+    font-size: var(--font-sm);
+    color: var(--high-contrast-text);
+    cursor: pointer;
+    user-select: none;
+}
+
+.autosplit-option .toggle-label .hint {
+    display: block;
+    font-size: var(--font-xs);
+    color: var(--low-contrast-text);
+    margin-top: 2px;
+}
+
+.autosplit-pct-input {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    opacity: 0.4;
+    transition: opacity 0.2s;
+}
+
+.autosplit-option:has(input:checked) .autosplit-pct-input {
+    opacity: 1;
+}
+
+.autosplit-pct-input input[type="number"] {
+    width: 50px;
+    padding: var(--space-xs);
+    border: 1px solid var(--ui-element-border);
+    border-radius: var(--radius-xs);
+    background: var(--ui-element-background);
+    color: var(--high-contrast-text);
+    font-size: var(--font-sm);
+    text-align: center;
+}
+
+.autosplit-pct-input input[type="number"]:disabled {
+    background: var(--subtle-background);
+    cursor: not-allowed;
+}
+
+.autosplit-pct-input span {
+    font-size: var(--font-sm);
+    color: var(--low-contrast-text);
 }
 
 /* Compact Data Preview */

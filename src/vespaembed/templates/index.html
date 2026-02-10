@@ -102,10 +102,6 @@
                 </div>
                 <div class="metrics-bar">
                     <div class="metric">
-                        <span class="metric-val" id="current-epoch">0</span>
-                        <span class="metric-label">epoch</span>
-                    </div>
-                    <div class="metric">
                         <span class="metric-val" id="current-step">0</span>
                         <span class="metric-label">steps</span>
                     </div>
@@ -155,17 +151,12 @@
                 </div>
             </div>
 
-            <!-- Progress Bar (Bottom) -->
-            <div class="progress-container" id="progress-container" style="display: none;">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
-                </div>
-                <div class="progress-text">
-                    <span id="progress-pct">0%</span>
-                    <span id="progress-speed">-- it/s</span>
-                </div>
-            </div>
         </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <span>vespaembed v{{ version }}</span>
+        </footer>
     </div>
 
     <!-- New Training Modal (Multi-Step Wizard) -->
@@ -185,10 +176,6 @@
                 <div class="wizard-step" data-step="2">
                     <span class="step-number">2</span>
                     <span class="step-label">Training</span>
-                </div>
-                <div class="wizard-step" data-step="3">
-                    <span class="step-number">3</span>
-                    <span class="step-label">Advanced</span>
                 </div>
             </div>
 
@@ -265,6 +252,22 @@
                                         <input type="hidden" id="eval_filename" name="eval_filename">
                                     </div>
                                 </div>
+                                <!-- Auto-split option -->
+                                <div class="autosplit-option">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="auto_split_eval">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <label class="toggle-label" for="auto_split_eval">
+                                        Auto-split for evaluation
+                                        <span class="hint">Split a portion of training data for validation</span>
+                                    </label>
+                                    <div class="autosplit-pct-input">
+                                        <input type="number" id="eval_split_pct" name="eval_split_pct"
+                                               value="10" min="0.1" max="50" step="0.1" disabled>
+                                        <span>%</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- HuggingFace Dataset Tab -->
@@ -291,6 +294,22 @@
                                         <label>Eval Split</label>
                                         <input type="text" id="hf_eval_split" name="hf_eval_split"
                                                placeholder="validation">
+                                    </div>
+                                </div>
+                                <!-- Auto-split option for HF datasets -->
+                                <div class="autosplit-option">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="hf_auto_split_eval">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <label class="toggle-label" for="hf_auto_split_eval">
+                                        Auto-split for evaluation
+                                        <span class="hint">Use when dataset has no eval/validation split</span>
+                                    </label>
+                                    <div class="autosplit-pct-input">
+                                        <input type="number" id="hf_eval_split_pct" name="hf_eval_split_pct"
+                                               value="10" min="0.1" max="50" step="0.1" disabled>
+                                        <span>%</span>
                                     </div>
                                 </div>
                             </div>
@@ -320,16 +339,16 @@
                                 <input type="number" id="epochs" name="epochs" value="3" min="1">
                             </div>
                             <div class="form-field compact">
+                                <label>Max Steps</label>
+                                <input type="number" id="max_steps" name="max_steps" placeholder="Optional" min="1">
+                            </div>
+                            <div class="form-field compact">
                                 <label>Batch Size</label>
                                 <input type="number" id="batch_size" name="batch_size" value="32" min="1">
                             </div>
                             <div class="form-field compact">
                                 <label>Learning Rate</label>
                                 <input type="text" id="learning_rate" name="learning_rate" value="2e-5">
-                            </div>
-                            <div class="form-field compact">
-                                <label>Warmup Ratio</label>
-                                <input type="text" id="warmup_ratio" name="warmup_ratio" value="0.1">
                             </div>
                         </div>
                         <div class="form-row">
@@ -346,166 +365,166 @@
                                 <input type="number" id="max_seq_length" name="max_seq_length" placeholder="auto" min="1">
                             </div>
                         </div>
-                        <div class="checkbox-row" style="margin-top: var(--space-xs);">
-                            <input type="checkbox" id="gradient_checkpointing" name="gradient_checkpointing">
-                            <label for="gradient_checkpointing">Gradient Checkpointing (saves VRAM)</label>
-                        </div>
-                    </div>
-
-                    <!-- Matryoshka (shown for compatible tasks) -->
-                    <div class="form-section" id="matryoshka-section">
-                        <label class="section-label">Matryoshka Embeddings</label>
-                        <div class="checkbox-row">
-                            <input type="checkbox" id="matryoshka_enabled" name="matryoshka_enabled">
-                            <label for="matryoshka_enabled">Enable Matryoshka (multi-dimensional embeddings)</label>
-                        </div>
-                        <div id="matryoshka-fields" style="display: none; margin-top: var(--space-xs);">
-                            <div class="form-field">
-                                <label>Dimensions</label>
-                                <input type="text" id="matryoshka_dims" name="matryoshka_dims"
-                                       value="768,512,256,128,64" placeholder="768,512,256,128,64">
-                                <span class="field-hint">Comma-separated dimensions (largest to smallest)</span>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Task-specific parameters (populated dynamically) -->
                     <div id="task-specific-params"></div>
 
-                    <!-- Optimizer & Scheduler -->
+                    <!-- Advanced Options (Collapsible) -->
                     <div class="form-section">
-                        <label class="section-label">Optimizer & Scheduler</label>
-                        <div class="form-row">
-                            <div class="form-field compact">
-                                <label>Optimizer</label>
-                                <select id="optimizer" name="optimizer">
-                                    <option value="adamw_torch" selected>AdamW</option>
-                                    <option value="adamw_torch_fused">AdamW Fused (CUDA)</option>
-                                    <option value="adamw_8bit">AdamW 8-bit</option>
-                                    <option value="adafactor">Adafactor</option>
-                                    <option value="sgd">SGD</option>
-                                </select>
+                        <button type="button" class="collapsible-header" id="advanced-toggle">
+                            <span>Advanced Options</span>
+                            <span class="collapsible-icon">▼</span>
+                        </button>
+                        <div class="collapsible-content" id="advanced-content">
+                            <!-- LoRA -->
+                            <div class="advanced-group">
+                                <div class="checkbox-row">
+                                    <input type="checkbox" id="lora_enabled" name="lora_enabled">
+                                    <label for="lora_enabled">Enable LoRA training</label>
+                                </div>
+                                <div id="lora-fields" style="display: none; margin-top: var(--space-xs);">
+                                    <div class="form-row">
+                                        <div class="form-field compact">
+                                            <label>Rank (r)</label>
+                                            <select id="lora_r" name="lora_r">
+                                                <option value="8">8</option>
+                                                <option value="16">16</option>
+                                                <option value="32">32</option>
+                                                <option value="64" selected>64</option>
+                                                <option value="128">128</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-field compact">
+                                            <label>Alpha</label>
+                                            <input type="number" id="lora_alpha" name="lora_alpha" value="128" min="1">
+                                        </div>
+                                        <div class="form-field compact">
+                                            <label>Dropout</label>
+                                            <input type="text" id="lora_dropout" name="lora_dropout" value="0.1">
+                                        </div>
+                                    </div>
+                                    <div class="form-field">
+                                        <label>Target Modules</label>
+                                        <select id="lora_target_preset" class="target-modules-select">
+                                            <option value="query, key, value, dense">BERT / MiniLM / MPNet / BGE</option>
+                                            <option value="Wqkv, Wi, Wo">ModernBERT / GTE-ModernBERT</option>
+                                            <option value="q_proj, k_proj, v_proj, o_proj">Llama / Gemma / Qwen</option>
+                                            <option value="q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj">Llama / Gemma / Qwen (extended)</option>
+                                            <option value="">Custom</option>
+                                        </select>
+                                        <input type="text" id="lora_target_modules" name="lora_target_modules"
+                                               value="query, key, value, dense" style="margin-top: var(--space-xs);"
+                                               placeholder="Enter comma-separated module names">
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-field compact">
-                                <label>Scheduler</label>
-                                <select id="scheduler" name="scheduler">
-                                    <option value="linear" selected>Linear</option>
-                                    <option value="cosine">Cosine</option>
-                                    <option value="cosine_with_restarts">Cosine w/ Restarts</option>
-                                    <option value="constant">Constant</option>
-                                    <option value="constant_with_warmup">Constant w/ Warmup</option>
-                                    <option value="polynomial">Polynomial</option>
-                                </select>
-                            </div>
-                            <div class="form-field compact">
-                                <label>Weight Decay</label>
-                                <input type="text" id="weight_decay" name="weight_decay" value="0.01">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-field compact">
-                                <label>Grad Accum</label>
-                                <input type="number" id="gradient_accumulation_steps" name="gradient_accumulation_steps" value="1" min="1">
-                            </div>
-                            <div class="form-field compact">
-                                <label>Logging Steps</label>
-                                <input type="number" id="logging_steps" name="logging_steps" value="100" min="1">
-                            </div>
-                            <div class="form-field compact">
-                                <label>Eval Steps</label>
-                                <input type="number" id="eval_steps" name="eval_steps" value="500" min="1">
-                            </div>
-                            <div class="form-field compact">
-                                <label>Save Steps</label>
-                                <input type="number" id="save_steps" name="save_steps" value="500" min="1">
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Step 3: Advanced (LoRA, Unsloth, Hub) -->
-                <div class="wizard-content" id="wizard-step-3" style="display: none;">
-                    <!-- LoRA/PEFT -->
-                    <div class="form-section">
-                        <label class="section-label">LoRA (PEFT)</label>
-                        <div class="checkbox-row">
-                            <input type="checkbox" id="lora_enabled" name="lora_enabled">
-                            <label for="lora_enabled">Enable LoRA training</label>
-                        </div>
-                        <div id="lora-fields" style="display: none; margin-top: var(--space-xs);">
-                            <div class="form-row">
-                                <div class="form-field compact">
-                                    <label>Rank (r)</label>
-                                    <select id="lora_r" name="lora_r">
-                                        <option value="8">8</option>
-                                        <option value="16">16</option>
-                                        <option value="32">32</option>
-                                        <option value="64" selected>64</option>
-                                        <option value="128">128</option>
-                                    </select>
+                            <!-- Matryoshka -->
+                            <div class="advanced-group" id="matryoshka-section">
+                                <div class="checkbox-row">
+                                    <input type="checkbox" id="matryoshka_enabled" name="matryoshka_enabled">
+                                    <label for="matryoshka_enabled">Enable Matryoshka embeddings</label>
                                 </div>
-                                <div class="form-field compact">
-                                    <label>Alpha</label>
-                                    <input type="number" id="lora_alpha" name="lora_alpha" value="128" min="1">
-                                </div>
-                                <div class="form-field compact">
-                                    <label>Dropout</label>
-                                    <input type="text" id="lora_dropout" name="lora_dropout" value="0.1">
+                                <div id="matryoshka-fields" style="display: none; margin-top: var(--space-xs);">
+                                    <div class="form-field">
+                                        <label>Dimensions</label>
+                                        <input type="text" id="matryoshka_dims" name="matryoshka_dims"
+                                               value="768,512,256,128,64" placeholder="768,512,256,128,64">
+                                        <span class="field-hint">Comma-separated (largest to smallest)</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="form-field">
-                                <label>Target Modules</label>
-                                <select id="lora_target_preset" class="target-modules-select">
-                                    <option value="query, key, value, dense">BERT / MiniLM / MPNet / BGE</option>
-                                    <option value="Wqkv, Wi, Wo">ModernBERT / GTE-ModernBERT</option>
-                                    <option value="q_proj, k_proj, v_proj, o_proj">Llama / Gemma / Qwen</option>
-                                    <option value="q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj">Llama / Gemma / Qwen (extended)</option>
-                                    <option value="">Custom</option>
-                                </select>
-                                <input type="text" id="lora_target_modules" name="lora_target_modules"
-                                       value="query, key, value, dense" style="margin-top: var(--space-xs);"
-                                       placeholder="Enter comma-separated module names">
-                                <span class="field-hint">Select a preset or choose Custom to enter your own.</span>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Unsloth -->
-                    <div class="form-section">
-                        <label class="section-label">Unsloth</label>
-                        <div class="checkbox-row">
-                            <input type="checkbox" id="unsloth_enabled" name="unsloth_enabled">
-                            <label for="unsloth_enabled">Enable Unsloth (faster training)</label>
-                        </div>
-                        <div id="unsloth-fields" style="display: none; margin-top: var(--space-xs);">
-                            <div class="form-row">
-                                <div class="form-field compact">
-                                    <label>Save Method</label>
-                                    <select id="unsloth_save_method" name="unsloth_save_method">
-                                        <option value="merged_16bit" selected>Merged FP16</option>
-                                        <option value="merged_4bit">Merged 4-bit</option>
-                                        <option value="lora">LoRA Only</option>
-                                    </select>
+                            <!-- Optimizer & Scheduler -->
+                            <div class="advanced-group">
+                                <span class="group-label">Optimizer & Scheduler</span>
+                                <div class="form-row">
+                                    <div class="form-field compact">
+                                        <label>Optimizer</label>
+                                        <select id="optimizer" name="optimizer">
+                                            <option value="adamw_torch" selected>AdamW</option>
+                                            <option value="adamw_torch_fused">AdamW Fused</option>
+                                            <option value="adamw_8bit">AdamW 8-bit</option>
+                                            <option value="adafactor">Adafactor</option>
+                                            <option value="sgd">SGD</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-field compact">
+                                        <label>Scheduler</label>
+                                        <select id="scheduler" name="scheduler">
+                                            <option value="linear" selected>Linear</option>
+                                            <option value="cosine">Cosine</option>
+                                            <option value="cosine_with_restarts">Cosine w/ Restarts</option>
+                                            <option value="constant">Constant</option>
+                                            <option value="polynomial">Polynomial</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-field compact">
+                                        <label>Weight Decay</label>
+                                        <input type="text" id="weight_decay" name="weight_decay" value="0.01">
+                                    </div>
+                                    <div class="form-field compact">
+                                        <label>Warmup Ratio</label>
+                                        <input type="text" id="warmup_ratio" name="warmup_ratio" value="0.1">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-field compact">
+                                        <label>Grad Accum</label>
+                                        <input type="number" id="gradient_accumulation_steps" name="gradient_accumulation_steps" value="1" min="1">
+                                    </div>
+                                    <div class="form-field compact">
+                                        <label>Logging Steps</label>
+                                        <input type="number" id="logging_steps" name="logging_steps" value="0.02" min="0" step="any">
+                                    </div>
+                                    <div class="form-field compact">
+                                        <label>Eval Steps</label>
+                                        <input type="number" id="eval_steps" name="eval_steps" value="0.25" min="0" step="any">
+                                    </div>
+                                    <div class="form-field compact">
+                                        <label>Save Steps</label>
+                                        <input type="number" id="save_steps" name="save_steps" value="0.5" min="0" step="any">
+                                    </div>
+                                </div>
+                                <div class="checkbox-row">
+                                    <input type="checkbox" id="gradient_checkpointing" name="gradient_checkpointing">
+                                    <label for="gradient_checkpointing">Gradient Checkpointing (saves VRAM)</label>
                                 </div>
                             </div>
-                            <span class="field-hint">Unsloth requires CUDA GPU. Full finetuning when LoRA is disabled.</span>
-                        </div>
-                    </div>
 
-                    <!-- Hub Push -->
-                    <div class="form-section">
-                        <label class="section-label">HuggingFace Hub</label>
-                        <div class="checkbox-row">
-                            <input type="checkbox" id="push_to_hub" name="push_to_hub">
-                            <label for="push_to_hub">Push to Hub (private)</label>
-                        </div>
-                        <div id="hub-fields" style="display: none; margin-top: var(--space-xs);">
-                            <div class="form-field">
-                                <label>Username</label>
-                                <input type="text" id="hf_username" name="hf_username"
-                                       placeholder="your-username">
+                            <!-- Unsloth -->
+                            <div class="advanced-group">
+                                <div class="checkbox-row">
+                                    <input type="checkbox" id="unsloth_enabled" name="unsloth_enabled">
+                                    <label for="unsloth_enabled">Enable Unsloth (faster training, requires CUDA)</label>
+                                </div>
+                                <div id="unsloth-fields" style="display: none; margin-top: var(--space-xs);">
+                                    <div class="form-field compact">
+                                        <label>Save Method</label>
+                                        <select id="unsloth_save_method" name="unsloth_save_method">
+                                            <option value="merged_16bit" selected>Merged FP16</option>
+                                            <option value="merged_4bit">Merged 4-bit</option>
+                                            <option value="lora">LoRA Only</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <span class="field-hint">Requires HF_TOKEN env var. Model pushed to: username/project-name</span>
+
+                            <!-- Hub Push -->
+                            <div class="advanced-group" style="border-bottom: none;">
+                                <div class="checkbox-row">
+                                    <input type="checkbox" id="push_to_hub" name="push_to_hub">
+                                    <label for="push_to_hub">Push to HuggingFace Hub</label>
+                                </div>
+                                <div id="hub-fields" style="display: none; margin-top: var(--space-xs);">
+                                    <div class="form-field">
+                                        <label>Username</label>
+                                        <input type="text" id="hf_username" name="hf_username" placeholder="your-username">
+                                        <span class="field-hint">Requires HF_TOKEN env var</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
