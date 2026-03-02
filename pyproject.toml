@@ -24,11 +24,13 @@ dependencies = [
     "pyyaml>=6.0.0",
     "peft>=0.18.1",
     "tensorboard>=2.15.0",
+    "onnx>=1.14.0",
+    "onnxruntime>=1.23.2",
+    "optimum[onnxruntime]>=2.1.0",
 ]
 
 [project.optional-dependencies]
 unsloth = ["unsloth>=2026.1.4"]
-onnx = ["onnx>=1.14.0", "onnxruntime>=1.23.2"]
 dev = [
     "black==26.1.0",
     "isort==7.0.0",

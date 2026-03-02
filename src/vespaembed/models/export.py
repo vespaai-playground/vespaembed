@@ -1,68 +1,56 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from sentence_transformers import SentenceTransformer
 
 
 def export_model(
-    model: SentenceTransformer,
+    model_path: Union[str, Path],
     output_path: str,
     format: str = "onnx",
 ) -> str:
-    """Export a model to a different format.
+    """Export a saved model to a different format.
 
     Args:
-        model: SentenceTransformer model
-        output_path: Output directory or file path
+        model_path: Path to saved SentenceTransformer model directory
+        output_path: Output directory for the exported model
         format: Export format ("onnx")
 
     Returns:
-        Path to exported model
+        Path to exported model directory
 
     Raises:
         ValueError: If format is not supported
     """
+    model_path = Path(model_path)
     output_path = Path(output_path)
 
     if format.lower() == "onnx":
-        return _export_onnx(model, output_path)
+        return _export_onnx(model_path, output_path)
     else:
         raise ValueError(f"Unsupported export format: {format}. Supported: onnx")
 
 
-def _export_onnx(model: SentenceTransformer, output_path: Path) -> str:
-    """Export model to ONNX format.
+def _export_onnx(model_path: Path, output_path: Path) -> str:
+    """Export model to ONNX format using sentence-transformers' built-in ONNX backend.
+
+    Reloads the saved model with backend="onnx" (which triggers optimum-based
+    conversion) and saves the result.
 
     Args:
-        model: SentenceTransformer model
+        model_path: Path to saved SentenceTransformer model
         output_path: Output directory
 
     Returns:
-        Path to ONNX model
+        Path to exported model directory
     """
-    try:
-        import onnx  # noqa: F401
-    except ImportError:
-        raise ImportError("ONNX not installed. Install with: pip install vespaembed[onnx]")
-
     output_path.mkdir(parents=True, exist_ok=True)
-    onnx_path = output_path / "model.onnx"
 
-    # Use sentence-transformers built-in ONNX export if available
-    # Otherwise fall back to manual export
-    try:
-        model.save(str(output_path), model_name_or_path="model.onnx", create_model_card=False)
-    except Exception:
-        # Manual export via transformers
-        from transformers import AutoTokenizer
+    # Reload the saved model with ONNX backend — this triggers automatic conversion
+    onnx_model = SentenceTransformer(str(model_path), backend="onnx")
+    onnx_model.save_pretrained(str(output_path))
 
-        tokenizer = AutoTokenizer.from_pretrained(model[0].auto_model.config._name_or_path)
-
-        # Export the transformer part
-        model[0].auto_model.save_pretrained(output_path)
-        tokenizer.save_pretrained(output_path)
-
-    return str(onnx_path)
+    return str(output_path)
 
 
 def push_to_hub(

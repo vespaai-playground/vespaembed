@@ -577,6 +577,21 @@ async def get_run_artifacts(run_id: int):
             }
         )
 
+    # Check for ONNX model
+    onnx_path = output_dir / "onnx"
+    if onnx_path.exists() and onnx_path.is_dir():
+        total_size = sum(f.stat().st_size for f in onnx_path.rglob("*") if f.is_file())
+        artifacts.append(
+            {
+                "name": "onnx",
+                "label": "ONNX Model",
+                "category": "model",
+                "path": str(onnx_path),
+                "size": total_size,
+                "is_directory": True,
+            }
+        )
+
     # Check for config file
     config_files = list(output_dir.glob("*.json"))
     for cf in config_files:

@@ -3137,12 +3137,14 @@ wheels = [
 
 [[package]]
 name = "vespaembed"
-version = "0.0.5"
+version = "0.0.6"
 source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
     { name = "datasets" },
     { name = "fastapi" },
+    { name = "onnx" },
+    { name = "onnxruntime" },
     { name = "pandas" },
     { name = "peft" },
     { name = "pydantic" },
@@ -3165,10 +3167,6 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
-onnx = [
-    { name = "onnx" },
-    { name = "onnxruntime" },
-]
 unsloth = [
     { name = "unsloth" },
 ]
@@ -3187,8 +3185,8 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.111.0" },
     { name = "flake8", marker = "extra == 'dev'", specifier = "==7.3.0" },
     { name = "isort", marker = "extra == 'dev'", specifier = "==7.0.0" },
-    { name = "onnx", marker = "extra == 'onnx'", specifier = ">=1.14.0" },
-    { name = "onnxruntime", marker = "extra == 'onnx'", specifier = ">=1.23.2" },
+    { name = "onnx", specifier = ">=1.14.0" },
+    { name = "onnxruntime", specifier = ">=1.23.2" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "peft", specifier = ">=0.18.1" },
     { name = "pydantic", specifier = ">=2.0.0" },
@@ -3205,7 +3203,7 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.30.0" },
     { name = "websockets", specifier = ">=12.0" },
 ]
-provides-extras = ["unsloth", "onnx", "dev"]
+provides-extras = ["unsloth", "dev"]
 
 [package.metadata.requires-dev]
 dev = [

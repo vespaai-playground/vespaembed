@@ -20,6 +20,7 @@ from vespaembed.core.config import (
 from vespaembed.core.trainer import VespaEmbedTrainer
 from vespaembed.db import update_run_status
 from vespaembed.enums import RunStatus
+from vespaembed.models.export import export_model
 from vespaembed.utils.logging import logger
 
 
@@ -225,6 +226,18 @@ class TrainingWorker:
 
             # Run training
             self.trainer.train()
+
+            # ONNX export (skip for Unsloth runs)
+            if not self.config.get("unsloth_enabled", False):
+                try:
+                    self._send_update("log", {"message": "Exporting model to ONNX format..."})
+                    final_model_path = Path(training_config.output.dir) / "final"
+                    onnx_output = Path(training_config.output.dir) / "onnx"
+                    export_model(str(final_model_path), str(onnx_output), format="onnx")
+                    self._send_update("log", {"message": "ONNX export complete"})
+                except Exception as e:
+                    logger.warning(f"ONNX export failed: {e}")
+                    self._send_update("log", {"message": f"ONNX export failed: {e} (training still succeeded)"})
 
             # Update status on completion
             update_run_status(self.run_id, RunStatus.COMPLETED)
