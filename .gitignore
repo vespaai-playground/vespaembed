@@ -16,6 +16,7 @@ catboost_info/
 *.db
 PLAN.md
 unsloth_examples/
+frontend/node_modules/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

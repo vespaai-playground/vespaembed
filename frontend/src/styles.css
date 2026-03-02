@@ -335,6 +335,17 @@ body {
     white-space: nowrap;
 }
 
+.summary-error {
+    background: rgba(var(--red-rgb, 220, 38, 38), 0.1);
+    border: 1px solid var(--red, #dc2626);
+    border-radius: var(--radius-sm);
+    padding: var(--space-sm);
+    margin-bottom: var(--space-sm);
+    font-size: var(--font-xs);
+    color: var(--red, #dc2626);
+    word-break: break-word;
+}
+
 .summary-actions {
     display: flex;
     gap: var(--space-sm);
@@ -908,9 +919,8 @@ body {
     margin-top: var(--space-xs);
     font-size: 11px;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-    min-height: 70px; /* Fixed height to prevent layout shift */
-    max-height: 70px;
-    overflow: hidden;
+    max-height: 120px;
+    overflow-y: auto;
 }
 
 .sample-data-header {
@@ -1074,6 +1084,12 @@ body {
 .upload-box.uploaded .upload-text {
     color: var(--success);
     font-weight: var(--font-medium);
+}
+
+.upload-error {
+    font-size: var(--font-xs);
+    color: #dc2626;
+    margin-top: var(--space-xs);
 }
 
 .form-row {
@@ -1786,6 +1802,17 @@ input:disabled {
     flex: 1;
     min-height: 0;
     overflow: hidden;
+}
+
+/* Form Error Banner */
+.form-error-banner {
+    background: rgba(220, 38, 38, 0.1);
+    border: 1px solid #dc2626;
+    border-radius: var(--radius-sm);
+    padding: var(--space-sm) var(--space-md);
+    margin: 0 var(--space-lg) var(--space-sm);
+    font-size: var(--font-sm);
+    color: #dc2626;
 }
 
 /* Wizard Footer */

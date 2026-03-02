@@ -10,9 +10,7 @@ from typing import Optional
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, field_validator
-from starlette.requests import Request
 
 from vespaembed.db import create_run, delete_run, get_active_run, get_all_runs, get_run, update_run_status
 from vespaembed.enums import RunStatus
@@ -70,7 +68,7 @@ def sync_run_statuses():
 # Paths
 PACKAGE_DIR = Path(__file__).parent.parent
 STATIC_DIR = PACKAGE_DIR / "static"
-TEMPLATES_DIR = PACKAGE_DIR / "templates"
+DIST_DIR = STATIC_DIR / "dist"
 BASE_DIR = Path.home() / ".vespaembed"
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPDATE_DIR = BASE_DIR / "updates"
@@ -82,11 +80,10 @@ PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 # FastAPI app
 app = FastAPI(title="VespaEmbed", version="0.0.1")
 
-# Mount static files
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-# Templates
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+# Mount Vite build assets (hashed JS/CSS bundles)
+ASSETS_DIR = DIST_DIR / "assets"
+if ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
 
 # Sync run statuses on startup
 sync_run_statuses()
@@ -195,10 +192,21 @@ except Exception:
 
 
 # Routes
+_index_html_path = DIST_DIR / "index.html"
+
+
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """Serve the main page."""
-    return templates.TemplateResponse("index.html", {"request": request, "version": VERSION})
+async def index():
+    """Serve the main page (Vite build)."""
+    if not _index_html_path.exists():
+        raise HTTPException(status_code=500, detail="Frontend build not found. Run 'cd frontend && npm run build'.")
+    return HTMLResponse(_index_html_path.read_text())
+
+
+@app.get("/api/version")
+async def get_version():
+    """Get the package version."""
+    return {"version": VERSION}
 
 
 @app.post("/upload", response_model=UploadResponse)

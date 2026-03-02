@@ -28,6 +28,14 @@ jobs:
     - name: Create virtual environment
       run: uv venv
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+
+    - name: Build frontend
+      run: cd frontend && npm ci && npm run build
+
     - name: Install build dependencies
       run: uv pip install build twine
 

@@ -1,5 +1,5 @@
 
-.PHONY: quality style test
+.PHONY: quality style test frontend-build pip
 
 quality:
 	black --check .
@@ -13,7 +13,10 @@ style:
 test:
 	pytest -sv ./src/
 
-pip:
+frontend-build:
+	cd frontend && npm ci && npm run build
+
+pip: frontend-build
 	rm -rf build/
 	rm -rf dist/
 	python -m build
