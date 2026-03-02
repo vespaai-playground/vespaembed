@@ -13,11 +13,11 @@ class TestHealthAndIndex:
         assert "text/html" in response.headers["content-type"]
         assert "VespaEmbed" in response.text
 
-    def test_index_contains_modal(self, client):
-        """Test that the index page contains the new project modal with wizard layout."""
+    def test_index_contains_app_root(self, client):
+        """Test that the index page contains the React app root and asset references."""
         response = client.get("/")
-        assert "new-training-modal" in response.text
-        assert "modal-wizard" in response.text
+        assert '<div id="root">' in response.text
+        assert "/assets/" in response.text
 
 
 class TestTasksAPI:

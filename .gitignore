@@ -30,7 +30,8 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+/dist/
+!/src/vespaembed/static/dist/
 downloads/
 eggs/
 .eggs/
