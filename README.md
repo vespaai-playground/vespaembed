@@ -31,9 +31,6 @@ pip install vespaembed
 ```bash
 # For Unsloth acceleration (requires NVIDIA/AMD GPU)
 pip install vespaembed[unsloth]
-
-# For ONNX export
-pip install vespaembed[onnx]
 ```
 
 ### Development Installation
