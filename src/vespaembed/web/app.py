@@ -1,14 +1,16 @@
+import io
 import json
 import os
 import re
 import subprocess
 import sys
 import time
+import zipfile
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -639,3 +641,50 @@ async def get_run_artifacts(run_id: int):
         )
 
     return {"artifacts": artifacts, "output_dir": str(output_dir)}
+
+
+@app.get("/runs/{run_id}/artifacts/{artifact_name}/download")
+async def download_artifact(run_id: int, artifact_name: str):
+    """Download an artifact file or directory (as zip) for a training run."""
+    run = get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    output_dir = Path(run["output_dir"])
+    if not output_dir.exists():
+        raise HTTPException(status_code=404, detail="Output directory not found")
+
+    artifact_path = output_dir / artifact_name
+    if not artifact_path.exists():
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    # Security: ensure the artifact is within the output directory
+    try:
+        artifact_path.resolve().relative_to(output_dir.resolve())
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if artifact_path.is_file():
+        return FileResponse(
+            path=str(artifact_path),
+            filename=artifact_path.name,
+            media_type="application/octet-stream",
+        )
+
+    # Directory: stream as zip
+    def iter_zip():
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for file_path in sorted(artifact_path.rglob("*")):
+                if file_path.is_file():
+                    arcname = file_path.relative_to(artifact_path)
+                    zf.write(file_path, arcname)
+        buffer.seek(0)
+        yield buffer.read()
+
+    zip_filename = f"{artifact_name}.zip"
+    return StreamingResponse(
+        iter_zip(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_filename}"'},
+    )
