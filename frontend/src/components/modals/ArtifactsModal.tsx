@@ -72,12 +72,21 @@ export function ArtifactsModal() {
                     <span>{formatFileSize(artifact.size)}</span>
                   </div>
                 </div>
-                <button
-                  className="artifact-download"
-                  onClick={() => copyPath(artifact.path)}
-                >
-                  {copiedPath === artifact.path ? 'Copied!' : 'Copy Path'}
-                </button>
+                <div className="artifact-actions">
+                  <a
+                    className="artifact-download"
+                    href={api.getArtifactDownloadUrl(selectedRunId!, artifact.name)}
+                    download
+                  >
+                    Download
+                  </a>
+                  <button
+                    className="artifact-copy"
+                    onClick={() => copyPath(artifact.path)}
+                  >
+                    {copiedPath === artifact.path ? 'Copied!' : 'Copy Path'}
+                  </button>
+                </div>
               </div>
             ))
           )}

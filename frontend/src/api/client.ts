@@ -79,3 +79,7 @@ export function fetchArtifacts(runId: number): Promise<ArtifactsResponse> {
 export function fetchVersion(): Promise<{ version: string }> {
   return request('/api/version')
 }
+
+export function getArtifactDownloadUrl(runId: number, artifactName: string): string {
+  return `/runs/${runId}/artifacts/${encodeURIComponent(artifactName)}/download`
+}
