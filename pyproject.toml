@@ -24,7 +24,7 @@ dependencies = [
     "pyyaml>=6.0.0",
     "peft>=0.18.1",
     "tensorboard>=2.15.0",
-    "onnx>=1.14.0",
+    "onnx>=1.21.0",
     "onnxruntime>=1.23.2",
     "optimum[onnxruntime]>=2.1.0",
 ]
