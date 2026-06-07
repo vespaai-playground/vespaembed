@@ -9,34 +9,41 @@ authors = [
     {name = "Abhishek Thakur"}
 ]
 dependencies = [
-    "sentence-transformers>=3.0.0",
-    "transformers>=4.40.0",
+    "sentence-transformers>=5.5.1",
+    # [CANNOT-FIX] CVE-2025-14920, CVE-2026-4372, CVE-2026-5241 in transformers 4.57.6:
+    # all three fixes only ship in the transformers 5.x line (CVE-2026-5241 fix first
+    # lands in 5.5.0; no 4.x backport exists — 4.57.6 is the last 4.x release), but
+    # optimum-onnx (pulled in via optimum[onnxruntime], required by the ONNX model-export
+    # feature in src/vespaembed/models/export.py) caps transformers <4.58.0 in its newest
+    # release (0.1.0). Bump transformers to >=5.5.0 once optimum-onnx supports 5.x.
+    # Last verified: 2026-06-07 by Claude (security-workflow skill).
+    "transformers>=4.57.6",
     "accelerate>=1.13.0",
-    "torch>=2.0.0",
-    "datasets>=2.18.0",
-    "pandas>=2.0.0",
-    "pydantic>=2.0.0",
-    "rich>=13.0.0",
-    "fastapi>=0.111.0",
-    "uvicorn>=0.30.0",
-    "python-multipart>=0.0.22",
-    "websockets>=12.0",
-    "pyyaml>=6.0.0",
-    "peft>=0.18.1",
+    "torch>=2.10.0",
+    "datasets>=4.3.0",
+    "pandas>=3.0.3",
+    "pydantic>=2.13.4",
+    "rich>=15.0.0",
+    "fastapi>=0.136.3",
+    "uvicorn>=0.49.0",
+    "python-multipart>=0.0.32",
+    "websockets>=16.0",
+    "pyyaml>=6.0.3",
+    "peft>=0.19.1",
     "tensorboard>=2.20.0",
     "onnx>=1.21.0",
-    "onnxruntime>=1.23.2",
+    "onnxruntime>=1.26.0",
     "optimum[onnxruntime]>=2.1.0",
 ]
 
 [project.optional-dependencies]
-unsloth = ["unsloth>=2026.1.4"]
+unsloth = ["unsloth>=2026.5.2"]
 dev = [
-    "black==26.1.0",
+    "black==26.5.1",
     "isort==7.0.0",
     "flake8==7.3.0",
-    "pytest>=9.0.2",
-    "pytest-cov>=7.0.0",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
 ]
 
 [project.urls]
@@ -99,6 +106,6 @@ addopts = "-v --tb=short"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.2",
-    "pytest-cov>=7.0.0",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
 ]
