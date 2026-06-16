@@ -16,7 +16,7 @@ dependencies = [
     # optimum-onnx (pulled in via optimum[onnxruntime], required by the ONNX model-export
     # feature in src/vespaembed/models/export.py) caps transformers <4.58.0 in its newest
     # release (0.1.0). Bump transformers to >=5.5.0 once optimum-onnx supports 5.x.
-    # Tracked in VESPANG-3310. Last verified: 2026-06-07 (automated dependency-security sweep).
+    # Tracked in VESPANG-3310. Last verified: 2026-06-16 (automated dependency-security sweep).
     "transformers>=4.57.6",
     "accelerate>=1.13.0",
     "torch>=2.10.0",
