@@ -208,6 +208,59 @@ class TrainCommand(BaseCommand):
         output_dir.mkdir(parents=True, exist_ok=True)
         return output_dir
 
+    def _build_config_from_cli(self) -> TrainingConfig:
+        """Build a TrainingConfig from CLI arguments."""
+        # Validate required arguments
+        if not self.data:
+            raise ValueError("--data is required (or use --config)")
+        if not self.task:
+            raise ValueError("--task is required (or use --config)")
+        if not self.base_model:
+            raise ValueError("--base-model is required (or use --config)")
+
+        # Parse matryoshka dimensions if enabled, before any output directory is created
+        matryoshka_dims = None
+        if self.matryoshka:
+            if self.task == "tsdae":
+                raise ValueError("Matryoshka is not supported with TSDAE task")
+            try:
+                matryoshka_dims = [int(d.strip()) for d in self.matryoshka_dims.split(",") if d.strip()]
+            except ValueError:
+                matryoshka_dims = []
+            if not matryoshka_dims or any(d <= 0 for d in matryoshka_dims):
+                raise ValueError("--matryoshka-dims must be a comma-separated list of positive integers")
+            logger.info(f"Matryoshka enabled with dimensions: {matryoshka_dims}")
+
+        # Generate project name if not provided
+        project_name = self.project or self._generate_project_name()
+        output_dir = self._resolve_output_dir(project_name)
+
+        logger.info(f"Project: {project_name}")
+        logger.info(f"Output: {output_dir}")
+
+        return TrainingConfig(
+            task=self.task,
+            base_model=self.base_model,
+            data={
+                "train": self.data,
+                "eval": self.eval_data,
+                "subset": self.subset,
+                "split": self.split,
+            },
+            training={
+                "epochs": self.epochs,
+                "batch_size": self.batch_size,
+                "learning_rate": self.learning_rate,
+                "optimizer": self.optimizer,
+                "scheduler": self.scheduler,
+            },
+            output={
+                "dir": str(output_dir),
+            },
+            unsloth={"enabled": self.unsloth},
+            matryoshka_dims=matryoshka_dims,
+        )
+
     def execute(self):
         """Execute the train command."""
         # Load config from file or build from CLI args
@@ -215,52 +268,7 @@ class TrainCommand(BaseCommand):
             logger.info(f"Loading config from: {self.config_path}")
             config = load_config_from_yaml(self.config_path)
         else:
-            # Validate required arguments
-            if not self.data:
-                raise ValueError("--data is required (or use --config)")
-            if not self.task:
-                raise ValueError("--task is required (or use --config)")
-            if not self.base_model:
-                raise ValueError("--base-model is required (or use --config)")
-
-            # Generate project name if not provided
-            project_name = self.project or self._generate_project_name()
-            output_dir = self._resolve_output_dir(project_name)
-
-            logger.info(f"Project: {project_name}")
-            logger.info(f"Output: {output_dir}")
-
-            # Parse matryoshka dimensions if enabled
-            matryoshka_dims = None
-            if self.matryoshka:
-                if self.task == "tsdae":
-                    raise ValueError("Matryoshka is not supported with TSDAE task")
-                matryoshka_dims = [int(d.strip()) for d in self.matryoshka_dims.split(",") if d.strip()]
-                logger.info(f"Matryoshka enabled with dimensions: {matryoshka_dims}")
-
-            # Build config from CLI args
-            config = TrainingConfig(
-                task=self.task,
-                base_model=self.base_model,
-                data={
-                    "train": self.data,
-                    "eval": self.eval_data,
-                    "subset": self.subset,
-                    "split": self.split,
-                },
-                training={
-                    "epochs": self.epochs,
-                    "batch_size": self.batch_size,
-                    "learning_rate": self.learning_rate,
-                    "optimizer": self.optimizer,
-                    "scheduler": self.scheduler,
-                },
-                output={
-                    "dir": str(output_dir),
-                },
-                unsloth=self.unsloth,
-                matryoshka_dims=matryoshka_dims,
-            )
+            config = self._build_config_from_cli()
 
         # Create and run trainer
         trainer = VespaEmbedTrainer(config)

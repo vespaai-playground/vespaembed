@@ -82,6 +82,81 @@ class TestTrainCommand:
         assert cmd.learning_rate == 1e-4
         assert cmd.project == "my-project"
 
+    def test_build_config_from_cli_unsloth_default(self, tmp_path, monkeypatch):
+        """The --unsloth flag default (False) must build a valid config."""
+        from vespaembed.cli.commands import train as train_module
+        from vespaembed.cli.commands.train import TrainCommand
+
+        monkeypatch.setattr(train_module, "PROJECTS_DIR", tmp_path)
+        cmd = TrainCommand(data="train.csv", task="pairs", base_model="model", project="p1")
+        config = cmd._build_config_from_cli()
+
+        assert config.unsloth.enabled is False
+
+    def test_build_config_from_cli_unsloth_enabled(self, tmp_path, monkeypatch):
+        """--unsloth must map onto UnslothConfig.enabled."""
+        from vespaembed.cli.commands import train as train_module
+        from vespaembed.cli.commands.train import TrainCommand
+
+        monkeypatch.setattr(train_module, "PROJECTS_DIR", tmp_path)
+        cmd = TrainCommand(data="train.csv", task="pairs", base_model="model", project="p2", unsloth=True)
+        config = cmd._build_config_from_cli()
+
+        assert config.unsloth.enabled is True
+
+    def test_build_config_from_cli_matryoshka_dims_empty(self, tmp_path, monkeypatch):
+        """--matryoshka with an empty dims list must fail fast, not silently disable."""
+        import pytest
+
+        from vespaembed.cli.commands import train as train_module
+        from vespaembed.cli.commands.train import TrainCommand
+
+        monkeypatch.setattr(train_module, "PROJECTS_DIR", tmp_path)
+        cmd = TrainCommand(
+            data="train.csv", task="pairs", base_model="model", project="p3", matryoshka=True, matryoshka_dims=","
+        )
+        with pytest.raises(ValueError, match="positive integers"):
+            cmd._build_config_from_cli()
+
+    def test_build_config_from_cli_matryoshka_dims_negative(self, tmp_path, monkeypatch):
+        """Non-positive matryoshka dimensions must be rejected."""
+        import pytest
+
+        from vespaembed.cli.commands import train as train_module
+        from vespaembed.cli.commands.train import TrainCommand
+
+        monkeypatch.setattr(train_module, "PROJECTS_DIR", tmp_path)
+        cmd = TrainCommand(
+            data="train.csv",
+            task="pairs",
+            base_model="model",
+            project="p4",
+            matryoshka=True,
+            matryoshka_dims="256,-64",
+        )
+        with pytest.raises(ValueError, match="positive integers"):
+            cmd._build_config_from_cli()
+
+    def test_build_config_from_cli_matryoshka_dims_non_integer(self, tmp_path, monkeypatch):
+        """Non-integer dims get the same clear error, and no project dir is left behind."""
+        import pytest
+
+        from vespaembed.cli.commands import train as train_module
+        from vespaembed.cli.commands.train import TrainCommand
+
+        monkeypatch.setattr(train_module, "PROJECTS_DIR", tmp_path)
+        cmd = TrainCommand(
+            data="train.csv",
+            task="pairs",
+            base_model="model",
+            project="p5",
+            matryoshka=True,
+            matryoshka_dims="256,abc",
+        )
+        with pytest.raises(ValueError, match="positive integers"):
+            cmd._build_config_from_cli()
+        assert not list(tmp_path.iterdir())
+
     def test_generate_project_name(self):
         """Test project name generation."""
         from vespaembed.cli.commands.train import TrainCommand
