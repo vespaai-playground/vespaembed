@@ -729,7 +729,14 @@ body {
     letter-spacing: 0.5px;
 }
 
-.artifact-download {
+.artifact-actions {
+    display: flex;
+    gap: var(--space-xs);
+    flex-shrink: 0;
+}
+
+.artifact-download,
+.artifact-copy {
     padding: var(--space-xs) var(--space-sm);
     background: var(--ui-element-background);
     border: 1px solid var(--ui-element-border);
@@ -739,9 +746,13 @@ body {
     cursor: pointer;
     transition: all 0.15s;
     white-space: nowrap;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
 }
 
-.artifact-download:hover {
+.artifact-download:hover,
+.artifact-copy:hover {
     background: var(--ui-element-background-hover);
     border-color: var(--ui-element-border-hover);
 }
