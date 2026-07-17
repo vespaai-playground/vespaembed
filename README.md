@@ -247,6 +247,7 @@ Trained models are saved to `~/.vespaembed/projects/<project-name>/`:
 ```
 ~/.vespaembed/projects/my-project/
 ├── final/              # Final trained model
+├── onnx/               # ONNX export of the final model (model.onnx + tokenizer)
 ├── checkpoint-500/     # Training checkpoints
 ├── checkpoint-1000/
 └── logs/               # TensorBoard logs

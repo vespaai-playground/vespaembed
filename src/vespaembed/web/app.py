@@ -5,7 +5,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse
@@ -124,9 +124,10 @@ class TrainRequest(BaseModel):
     weight_decay: float = 0.01
     fp16: bool = False
     bf16: bool = False
-    eval_steps: float = 0.25
-    save_steps: float = 0.5
-    logging_steps: float = 0.02
+    # Either an absolute step count (int >= 1) or a ratio of total steps (0-1)
+    eval_steps: Union[int, float] = 0.25
+    save_steps: Union[int, float] = 0.5
+    logging_steps: Union[int, float] = 0.02
     gradient_accumulation_steps: int = 1
 
     # Optimizer and scheduler
@@ -223,8 +224,11 @@ async def upload_file(
     if file_type not in ("train", "eval"):
         raise HTTPException(status_code=400, detail="file_type must be 'train' or 'eval'")
 
-    # Save file with prefix to distinguish train/eval
-    original_filename = file.filename
+    # Save file with prefix to distinguish train/eval.
+    # Take only the basename so a crafted filename can't escape the upload dir.
+    original_filename = Path(file.filename or "").name
+    if not original_filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
     filename = f"{file_type}_{original_filename}"
     filepath = UPLOAD_DIR / filename
 

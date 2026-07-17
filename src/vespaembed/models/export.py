@@ -35,7 +35,8 @@ def _export_onnx(model_path: Path, output_path: Path) -> str:
     """Export model to ONNX format using sentence-transformers' built-in ONNX backend.
 
     Reloads the saved model with backend="onnx" (which triggers optimum-based
-    conversion) and saves the result.
+    conversion) and saves the result. The ONNX graph ends up at
+    <output_path>/model.onnx alongside the tokenizer files.
 
     Args:
         model_path: Path to saved SentenceTransformer model
@@ -44,11 +45,26 @@ def _export_onnx(model_path: Path, output_path: Path) -> str:
     Returns:
         Path to exported model directory
     """
+    import shutil
+
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Reload the saved model with ONNX backend — this triggers automatic conversion
     onnx_model = SentenceTransformer(str(model_path), backend="onnx")
     onnx_model.save_pretrained(str(output_path))
+
+    # sentence-transformers saves the graph under an onnx/ subdirectory; flatten it
+    # so the file sits at <output_path>/model.onnx (the layout optimum-cli produces,
+    # and what deployment targets expect). Otherwise exporting into a directory
+    # named "onnx" yields a confusing onnx/onnx/model.onnx.
+    nested_dir = output_path / "onnx"
+    if nested_dir.is_dir():
+        for item in nested_dir.iterdir():
+            target = output_path / item.name
+            if not target.exists():
+                shutil.move(str(item), str(target))
+        if not any(nested_dir.iterdir()):
+            nested_dir.rmdir()
 
     return str(output_path)
 

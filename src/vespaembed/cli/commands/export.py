@@ -69,18 +69,16 @@ class ExportCommand(BaseCommand):
 
     def execute(self):
         """Execute the export command."""
-        # Load model
-        logger.info(f"Loading model: {self.model_path}")
-        model = load_model(self.model_path)
-
-        # Export
+        # Export (export_model takes the saved model path, not a loaded model)
         if self.format:
             logger.info(f"Exporting to {self.format}: {self.output_path}")
-            export_path = export_model(model, self.output_path, self.format)
+            export_path = export_model(self.model_path, self.output_path, self.format)
             logger.success(f"Model exported to: {export_path}")
 
         # Push to Hub
         if self.hub_id:
+            logger.info(f"Loading model: {self.model_path}")
+            model = load_model(self.model_path)
             logger.info(f"Pushing to HuggingFace Hub: {self.hub_id}")
             url = push_to_hub(model, self.hub_id)
             logger.success(f"Model pushed to: {url}")

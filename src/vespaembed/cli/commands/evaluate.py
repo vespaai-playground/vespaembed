@@ -1,5 +1,7 @@
 from argparse import ArgumentParser, Namespace
 
+# Import tasks to register them
+import vespaembed.tasks  # noqa: F401
 from vespaembed.cli import BaseCommand
 from vespaembed.core.registry import Registry
 from vespaembed.datasets.loader import load_dataset
@@ -43,7 +45,7 @@ class EvaluateCommand(BaseCommand):
             "--task",
             type=str,
             required=True,
-            choices=["mnr", "triplet", "contrastive", "sts", "nli", "tsdae", "matryoshka"],
+            choices=["pairs", "triplets", "similarity", "tsdae"],
             help="Task type (determines evaluator)",
         )
 

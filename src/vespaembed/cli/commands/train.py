@@ -8,6 +8,7 @@ import vespaembed.tasks  # noqa: F401
 from vespaembed.cli import BaseCommand
 from vespaembed.core.config import TrainingConfig, load_config_from_yaml
 from vespaembed.core.trainer import VespaEmbedTrainer
+from vespaembed.models.export import export_model
 from vespaembed.utils.logging import logger
 
 # Projects directory
@@ -28,6 +29,8 @@ def train_command_factory(args: Namespace) -> "TrainCommand":
         learning_rate=args.learning_rate,
         optimizer=args.optimizer,
         scheduler=args.scheduler,
+        fp16=args.fp16,
+        bf16=args.bf16,
         unsloth=args.unsloth,
         matryoshka=args.matryoshka,
         matryoshka_dims=args.matryoshka_dims,
@@ -122,6 +125,16 @@ class TrainCommand(BaseCommand):
             help="Learning rate scheduler (default: linear)",
         )
         train_parser.add_argument(
+            "--fp16",
+            action="store_true",
+            help="Use FP16 mixed-precision training (requires a CUDA GPU)",
+        )
+        train_parser.add_argument(
+            "--bf16",
+            action="store_true",
+            help="Use BF16 mixed-precision training",
+        )
+        train_parser.add_argument(
             "--unsloth",
             action="store_true",
             help="Use Unsloth for faster training",
@@ -167,6 +180,8 @@ class TrainCommand(BaseCommand):
         learning_rate: float = 2e-5,
         optimizer: str = "adamw_torch",
         scheduler: str = "linear",
+        fp16: bool = False,
+        bf16: bool = False,
         unsloth: bool = False,
         matryoshka: bool = False,
         matryoshka_dims: str = "768,512,256,128,64",
@@ -184,6 +199,8 @@ class TrainCommand(BaseCommand):
         self.learning_rate = learning_rate
         self.optimizer = optimizer
         self.scheduler = scheduler
+        self.fp16 = fp16
+        self.bf16 = bf16
         self.unsloth = unsloth
         self.matryoshka = matryoshka
         self.matryoshka_dims = matryoshka_dims
@@ -253,6 +270,8 @@ class TrainCommand(BaseCommand):
                 "learning_rate": self.learning_rate,
                 "optimizer": self.optimizer,
                 "scheduler": self.scheduler,
+                "fp16": self.fp16,
+                "bf16": self.bf16,
             },
             output={
                 "dir": str(output_dir),
@@ -273,3 +292,14 @@ class TrainCommand(BaseCommand):
         # Create and run trainer
         trainer = VespaEmbedTrainer(config)
         trainer.train()
+
+        # Export to ONNX like the web UI worker does (skip for Unsloth runs)
+        if not config.unsloth.enabled:
+            final_path = Path(config.output.dir) / "final"
+            onnx_path = Path(config.output.dir) / "onnx"
+            try:
+                logger.info(f"Exporting model to ONNX: {onnx_path}")
+                export_model(str(final_path), str(onnx_path), format="onnx")
+                logger.success(f"ONNX model exported to: {onnx_path}")
+            except Exception as e:
+                logger.warning(f"ONNX export failed: {e} (training still succeeded)")

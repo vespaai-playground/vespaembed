@@ -11,7 +11,7 @@ style:
 	isort .
 
 test:
-	pytest -sv ./src/
+	pytest -sv ./tests/
 
 frontend-build:
 	cd frontend && npm ci && npm run build

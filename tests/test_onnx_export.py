@@ -18,7 +18,7 @@ class TestExportModel:
             export_model("/tmp/model", "/tmp/out", format="tflite")
 
     def test_export_creates_onnx_file(self, tmp_path):
-        """Test that export produces an onnx/model.onnx file."""
+        """Test that export produces a model.onnx file at the output root."""
         from sentence_transformers import SentenceTransformer
 
         from vespaembed.models.export import export_model
@@ -35,10 +35,11 @@ class TestExportModel:
         # Should return the output directory path
         assert result == str(output_dir)
 
-        # model.onnx should exist inside onnx/ subdirectory
-        onnx_file = output_dir / "onnx" / "model.onnx"
+        # model.onnx should sit at the output root (no nested onnx/ subdirectory)
+        onnx_file = output_dir / "model.onnx"
         assert onnx_file.exists()
         assert onnx_file.stat().st_size > 0
+        assert not (output_dir / "onnx").exists()
 
     def test_export_includes_tokenizer(self, tmp_path):
         """Test that export includes tokenizer files for inference."""
@@ -71,7 +72,7 @@ class TestExportModel:
         output_dir = tmp_path / "onnx_valid"
         export_model(str(model_dir), str(output_dir))
 
-        onnx_file = output_dir / "onnx" / "model.onnx"
+        onnx_file = output_dir / "model.onnx"
         onnx_model = onnx.load(str(onnx_file))
         onnx.checker.check_model(onnx_model)
 

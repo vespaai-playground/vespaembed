@@ -96,6 +96,7 @@ def train_similarity_stsb():
         loss_variant="cosent",
         data=DataConfig(
             train="sentence-transformers/stsb",
+            eval="sentence-transformers/stsb",
             split="train",
             eval_split="validation",
         ),
