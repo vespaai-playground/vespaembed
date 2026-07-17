@@ -1,5 +1,7 @@
 """Tests for the CLI commands."""
 
+from unittest.mock import MagicMock, patch
+
 
 class TestCLIImports:
     """Test that CLI modules can be imported."""
@@ -157,6 +159,75 @@ class TestTrainCommand:
             cmd._build_config_from_cli()
         assert not list(tmp_path.iterdir())
 
+    def test_build_config_from_cli_fp16_default_off(self, tmp_path, monkeypatch):
+        """CLI-built configs must not enable FP16 by default (crashes on CPU)."""
+        from vespaembed.cli.commands import train as train_module
+        from vespaembed.cli.commands.train import TrainCommand
+
+        monkeypatch.setattr(train_module, "PROJECTS_DIR", tmp_path)
+        cmd = TrainCommand(data="train.csv", task="pairs", base_model="model", project="p6")
+        config = cmd._build_config_from_cli()
+
+        assert config.training.fp16 is False
+        assert config.training.bf16 is False
+
+    def test_build_config_from_cli_fp16_flag(self, tmp_path, monkeypatch):
+        """--fp16 must map onto training.fp16."""
+        from vespaembed.cli.commands import train as train_module
+        from vespaembed.cli.commands.train import TrainCommand
+
+        monkeypatch.setattr(train_module, "PROJECTS_DIR", tmp_path)
+        cmd = TrainCommand(data="train.csv", task="pairs", base_model="model", project="p7", fp16=True)
+        config = cmd._build_config_from_cli()
+
+        assert config.training.fp16 is True
+
+    def test_train_auto_exports_onnx(self, tmp_path, monkeypatch):
+        """After training, the CLI must export the final model to ONNX like the UI worker."""
+        from vespaembed.cli.commands import train as train_module
+        from vespaembed.cli.commands.train import TrainCommand
+
+        monkeypatch.setattr(train_module, "PROJECTS_DIR", tmp_path)
+        cmd = TrainCommand(data="train.csv", task="pairs", base_model="model", project="p8")
+
+        with patch.object(train_module, "VespaEmbedTrainer") as mock_trainer_cls:
+            with patch.object(train_module, "export_model") as mock_export:
+                mock_trainer_cls.return_value = MagicMock()
+                cmd.execute()
+
+        mock_export.assert_called_once()
+        args, kwargs = mock_export.call_args
+        assert args[0].endswith("/final")
+        assert args[1].endswith("/onnx")
+
+    def test_train_skips_onnx_export_for_unsloth(self, tmp_path, monkeypatch):
+        """Unsloth runs must not attempt ONNX export."""
+        from vespaembed.cli.commands import train as train_module
+        from vespaembed.cli.commands.train import TrainCommand
+
+        monkeypatch.setattr(train_module, "PROJECTS_DIR", tmp_path)
+        cmd = TrainCommand(data="train.csv", task="pairs", base_model="model", project="p9", unsloth=True)
+
+        with patch.object(train_module, "VespaEmbedTrainer") as mock_trainer_cls:
+            with patch.object(train_module, "export_model") as mock_export:
+                mock_trainer_cls.return_value = MagicMock()
+                cmd.execute()
+
+        mock_export.assert_not_called()
+
+    def test_train_onnx_export_failure_does_not_fail_run(self, tmp_path, monkeypatch):
+        """A failing ONNX export must not turn a successful training into an error."""
+        from vespaembed.cli.commands import train as train_module
+        from vespaembed.cli.commands.train import TrainCommand
+
+        monkeypatch.setattr(train_module, "PROJECTS_DIR", tmp_path)
+        cmd = TrainCommand(data="train.csv", task="pairs", base_model="model", project="p10")
+
+        with patch.object(train_module, "VespaEmbedTrainer") as mock_trainer_cls:
+            with patch.object(train_module, "export_model", side_effect=RuntimeError("onnx broke")):
+                mock_trainer_cls.return_value = MagicMock()
+                cmd.execute()  # must not raise
+
     def test_generate_project_name(self):
         """Test project name generation."""
         from vespaembed.cli.commands.train import TrainCommand
@@ -166,6 +237,64 @@ class TestTrainCommand:
 
         assert len(name) == 8
         assert name.isalnum()
+
+
+class TestExportCommand:
+    """Test ExportCommand class."""
+
+    def test_export_passes_model_path_not_model_object(self, tmp_path):
+        """export must hand the saved-model PATH to export_model, not a loaded model."""
+        from vespaembed.cli.commands import export as export_module
+        from vespaembed.cli.commands.export import ExportCommand
+
+        cmd = ExportCommand(model_path=str(tmp_path / "final"), output_path=str(tmp_path / "out"))
+
+        with patch.object(export_module, "export_model", return_value=str(tmp_path / "out")) as mock_export:
+            with patch.object(export_module, "load_model") as mock_load:
+                cmd.execute()
+
+        mock_export.assert_called_once_with(str(tmp_path / "final"), str(tmp_path / "out"), "onnx")
+        # No hub push requested, so the model should never be loaded
+        mock_load.assert_not_called()
+
+    def test_export_loads_model_only_for_hub_push(self, tmp_path):
+        """Hub push still loads the model and pushes it."""
+        from vespaembed.cli.commands import export as export_module
+        from vespaembed.cli.commands.export import ExportCommand
+
+        cmd = ExportCommand(model_path=str(tmp_path / "final"), hub_id="user/repo")
+
+        with patch.object(export_module, "export_model", return_value="out"):
+            with patch.object(export_module, "load_model") as mock_load:
+                with patch.object(export_module, "push_to_hub", return_value="url") as mock_push:
+                    cmd.execute()
+
+        mock_load.assert_called_once_with(str(tmp_path / "final"))
+        mock_push.assert_called_once()
+
+
+class TestEvaluateCommand:
+    """Test EvaluateCommand class."""
+
+    def test_task_choices_match_registry(self):
+        """evaluate --task choices must be real registered task names."""
+        import argparse
+
+        import vespaembed.tasks  # noqa: F401
+        from vespaembed.cli.commands.evaluate import EvaluateCommand
+        from vespaembed.core.registry import Registry
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        EvaluateCommand.register_subcommand(subparsers)
+
+        args = parser.parse_args(["evaluate", "--model", "m", "--data", "d", "--task", "pairs"])
+        assert args.task == "pairs"
+
+        # Every accepted choice must resolve in the registry
+        for task_name in ("pairs", "triplets", "similarity", "tsdae"):
+            parsed = parser.parse_args(["evaluate", "--model", "m", "--data", "d", "--task", task_name])
+            assert Registry.get_task(parsed.task) is not None
 
 
 class TestServeCommand:

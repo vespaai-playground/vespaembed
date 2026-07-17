@@ -87,7 +87,7 @@ class TestDefaultHyperparameters:
         assert DEFAULT_HYPERPARAMETERS["epochs"] == 3
         assert DEFAULT_HYPERPARAMETERS["batch_size"] == 32
         assert DEFAULT_HYPERPARAMETERS["learning_rate"] == 2e-5
-        assert DEFAULT_HYPERPARAMETERS["fp16"] is True
+        assert DEFAULT_HYPERPARAMETERS["fp16"] is False
         assert DEFAULT_HYPERPARAMETERS["bf16"] is False
 
 

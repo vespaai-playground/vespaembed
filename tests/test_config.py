@@ -109,7 +109,7 @@ class TestTrainingHyperparameters:
         assert config.learning_rate == 2e-5
         assert config.warmup_ratio == 0.1
         assert config.weight_decay == 0.01
-        assert config.fp16 is True
+        assert config.fp16 is False
         assert config.bf16 is False
         assert config.eval_steps == 0.25
         assert config.save_steps == 0.5
@@ -205,7 +205,18 @@ class TestTrainingHyperparameters:
     def test_eval_steps_invalid_ratio(self):
         """Test that eval_steps ratio must be between 0 and 1."""
         with pytest.raises(ValueError):
-            TrainingHyperparameters(eval_steps=2.0)
+            TrainingHyperparameters(eval_steps=1.5)
+
+    def test_eval_steps_whole_float_is_step_count(self):
+        """Whole-number floats > 1 (e.g. 500.0 from a JSON round-trip) are step counts."""
+        config = TrainingHyperparameters(eval_steps=500.0)
+        assert config.eval_steps == 500
+        assert isinstance(config.eval_steps, int)
+
+    def test_eval_steps_ratio_one_stays_ratio(self):
+        """A ratio of exactly 1.0 remains a valid ratio, not a step count."""
+        config = TrainingHyperparameters(eval_steps=1.0)
+        assert config.eval_steps == 1.0
 
     def test_save_steps_integer(self):
         """Test save_steps with integer value."""

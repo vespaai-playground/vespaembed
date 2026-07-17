@@ -393,6 +393,13 @@ class VespaEmbedTrainer:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # 7. Training arguments
+        import torch
+
+        fp16 = self.config.training.fp16
+        if fp16 and not torch.cuda.is_available():
+            logger.warning("FP16 training requires a CUDA GPU but none is available; falling back to FP32")
+            fp16 = False
+
         logger.info(f"Optimizer: {self.config.training.optimizer}, Scheduler: {self.config.training.scheduler}")
         args = SentenceTransformerTrainingArguments(
             output_dir=str(output_dir),
@@ -403,7 +410,7 @@ class VespaEmbedTrainer:
             learning_rate=self.config.training.learning_rate,
             warmup_ratio=self.config.training.warmup_ratio,
             weight_decay=self.config.training.weight_decay,
-            fp16=self.config.training.fp16,
+            fp16=fp16,
             bf16=self.config.training.bf16,
             optim=self.config.training.optimizer,
             lr_scheduler_type=self.config.training.scheduler,

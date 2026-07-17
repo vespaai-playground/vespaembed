@@ -11,7 +11,7 @@ DEFAULT_HYPERPARAMETERS = {
     "learning_rate": 2e-5,
     "warmup_ratio": 0.1,
     "weight_decay": 0.01,
-    "fp16": True,
+    "fp16": False,
     "bf16": False,
     "eval_steps": 0.25,
     "save_steps": 0.5,

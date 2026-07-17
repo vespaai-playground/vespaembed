@@ -139,7 +139,7 @@ class TestTasksAPI:
         assert hyper["batch_size"] == 32
         assert hyper["learning_rate"] == 2e-5
         assert hyper["warmup_ratio"] == 0.1
-        assert hyper["fp16"] is True
+        assert hyper["fp16"] is False
         assert hyper["bf16"] is False
 
     def test_sample_data_matches_columns(self, client):

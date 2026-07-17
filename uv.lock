@@ -3389,7 +3389,7 @@ wheels = [
 
 [[package]]
 name = "vespaembed"
-version = "0.0.6"
+version = "0.0.7"
 source = { editable = "." }
 dependencies = [
     { name = "accelerate" },

@@ -78,7 +78,7 @@ class TrainingHyperparameters(BaseModel):
     learning_rate: float = Field(2e-5, description="Learning rate", gt=0)
     warmup_ratio: float = Field(0.1, description="Warmup ratio", ge=0, le=1)
     weight_decay: float = Field(0.01, description="Weight decay", ge=0)
-    fp16: bool = Field(True, description="Use FP16 training")
+    fp16: bool = Field(False, description="Use FP16 training (requires a CUDA GPU)")
     bf16: bool = Field(False, description="Use BF16 training")
     eval_steps: Union[int, float] = Field(0.25, description="Evaluate every N steps or ratio (0-1)")
     save_steps: Union[int, float] = Field(0.5, description="Save checkpoint every N steps or ratio (0-1)")
@@ -90,6 +90,10 @@ class TrainingHyperparameters(BaseModel):
     def validate_steps_or_ratio(cls, v):
         """Validate that steps are either positive integers or ratios between 0 and 1."""
         if isinstance(v, float):
+            # Whole-number floats above 1 are step counts that were coerced to float
+            # somewhere along the way (e.g. JSON round-trip through the worker)
+            if v > 1 and v.is_integer():
+                return int(v)
             if v <= 0 or v > 1:
                 raise ValueError("Float values must be ratios between 0 and 1 (exclusive of 0, inclusive of 1)")
         elif isinstance(v, int):

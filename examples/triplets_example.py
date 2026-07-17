@@ -80,6 +80,7 @@ def train_triplets_with_eval():
         base_model="sentence-transformers/all-MiniLM-L6-v2",
         data=DataConfig(
             train="sentence-transformers/all-nli",
+            eval="sentence-transformers/all-nli",
             subset="triplet",
             split="train",
             eval_split="dev",
