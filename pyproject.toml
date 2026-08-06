@@ -10,13 +10,16 @@ authors = [
 ]
 dependencies = [
     "sentence-transformers>=5.5.1",
-    # [CANNOT-FIX] CVE-2025-14920, CVE-2026-4372, CVE-2026-5241 in transformers 4.57.6:
-    # all three fixes only ship in the transformers 5.x line (CVE-2026-5241 fix first
-    # lands in 5.5.0; no 4.x backport exists — 4.57.6 is the last 4.x release), but
-    # optimum-onnx (pulled in via optimum[onnxruntime], required by the ONNX model-export
-    # feature in src/vespaembed/models/export.py) caps transformers <4.58.0 in its newest
-    # release (0.1.0). Bump transformers to >=5.5.0 once optimum-onnx supports 5.x.
-    # Tracked in VESPANG-3310. Last verified: 2026-08-03 (automated dependency-security sweep).
+    # [CANNOT-FIX] CVE-2026-4372, CVE-2026-5241, CVE-2026-9856 in transformers 4.57.6:
+    # fixes ship only in the 5.x line (5.3.0 / 5.5.0 / 5.8.0 respectively) with no 4.x
+    # backport — 4.57.6 is the last 4.x release. optimum-onnx (via optimum[onnxruntime],
+    # required by the ONNX export in src/vespaembed/models/export.py) caps transformers
+    # <4.58.0 in its newest release (0.1.0), so no 5.x fix is reachable. Bump to >=5.8.0
+    # once optimum-onnx supports 5.x.
+    # [FP-THEORY] CVE-2025-14920, CVE-2025-14921 are reported here but cannot apply: both
+    # advisories are bounded at last_affected 4.54.1 (no `fixed` event), and the floor
+    # below is 4.57.6. Reported to Mend rather than suppressed.
+    # Tracked in VESPANG-3310. Last verified: 2026-08-06 (automated dependency-security sweep).
     "transformers>=4.57.6",
     "accelerate>=1.13.0",
     "torch>=2.10.0",
