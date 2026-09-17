@@ -10,11 +10,13 @@ authors = [
 ]
 dependencies = [
     "sentence-transformers>=5.7.0",
-    # [CANNOT-FIX] CVE-2026-4372/-5241/-9856/-80047, CVE-2025-14921 - fixed only in
-    # transformers 5.x, but EVERY optimum-onnx release caps transformers <4.58.0 and the
-    # unsloth extra caps <=5.5.0; optimum[onnxruntime] drives src/vespaembed/models/export.py.
+    # [CANNOT-FIX] CVE-2026-4372/-5241/-9856/-80047 - fixed only in transformers 5.x, but
+    # EVERY optimum-onnx release caps transformers <4.58.0 and the unsloth extra caps <=5.5.0;
+    # optimum[onnxruntime] drives src/vespaembed/models/export.py.
+    # [FP-THEORY] CVE-2025-14921 - already fixed; OSV PYSEC-2025-212 last_affected=4.54.1 and
+    # we pin >=4.57.6, so Mend's finding against 4.57.6 is stale. NOT a 5.x blocker.
     # [CANNOT-FIX] CVE-2026-85670 - tokenizers 0.23.2 (latest) is still affected; no fix exists.
-    # Full rationale: PR #15 / VESPANG-3310 - verified 2026-09-16
+    # Full rationale: PR #15 / VESPANG-3310 - verified 2026-09-17
     "transformers>=4.57.6",
     "accelerate>=1.15.0",
     "torch>=2.10.0",
