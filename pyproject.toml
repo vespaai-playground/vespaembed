@@ -9,33 +9,32 @@ authors = [
     {name = "Abhishek Thakur"}
 ]
 dependencies = [
-    "sentence-transformers>=5.5.1",
-    # [CANNOT-FIX] CVE-2026-4372, CVE-2026-5241, CVE-2026-9856 in transformers 4.57.6:
-    # fixes ship only in the 5.x line (5.3.0 / 5.5.0 / 5.8.0 respectively) with no 4.x
-    # backport — 4.57.6 is the last 4.x release. optimum-onnx (via optimum[onnxruntime],
-    # required by the ONNX export in src/vespaembed/models/export.py) caps transformers
-    # <4.58.0 in its newest release (0.1.0), so no 5.x fix is reachable. Bump to >=5.8.0
-    # once optimum-onnx supports 5.x.
-    # [FP-THEORY] CVE-2025-14920, CVE-2025-14921 are reported here but cannot apply: both
-    # advisories are bounded at last_affected 4.54.1 (no `fixed` event), and the floor
-    # below is 4.57.6. Reported to Mend rather than suppressed.
-    # Tracked in VESPANG-3310. Last verified: 2026-08-06 (automated dependency-security sweep).
+    "sentence-transformers>=5.7.0",
+    # [CANNOT-FIX] CVE-2026-4372/-5241/-9856/-80047 - fixed only in transformers 5.x, but
+    # EVERY optimum-onnx release caps transformers <4.58.0 and the unsloth extra caps <=5.5.0;
+    # optimum[onnxruntime] drives src/vespaembed/models/export.py.
+    # [FP-THEORY] CVE-2025-14921 - already fixed; OSV PYSEC-2025-212 last_affected=4.54.1 and
+    # we pin >=4.57.6, so Mend's finding against 4.57.6 is stale. NOT a 5.x blocker.
+    # [CANNOT-FIX] CVE-2026-85670 - tokenizers 0.23.2 (latest) is still affected; no fix exists.
+    # Full rationale: PR #15 / VESPANG-3310 - verified 2026-09-17
     "transformers>=4.57.6",
-    "accelerate>=1.13.0",
+    "accelerate>=1.15.0",
     "torch>=2.10.0",
     "datasets>=4.3.0",
-    "pandas>=3.0.3",
-    "pydantic>=2.13.4",
+    "pandas>=3.0.5",
+    "pydantic>=2.13.5",
     "rich>=15.0.0",
-    "fastapi>=0.136.3",
-    "uvicorn>=0.49.0",
+    "fastapi>=0.141.1",
+    "uvicorn>=0.53.0",
     "python-multipart>=0.0.32",
-    "websockets>=16.0",
+    "websockets>=17.1",
     "pyyaml>=6.0.3",
-    "peft>=0.19.1",
-    "tensorboard>=2.20.0",
-    "onnx>=1.21.0",
-    "onnxruntime>=1.26.0",
+    # [CANNOT-FIX] CVE-2026-71281 - peft 0.21.0 (latest) still calls bare torch.load() at
+    # corda.py:102/:163 and loraga.py:101 - Full rationale: PR #15 / VESPANG-3310 - verified 2026-09-16
+    "peft>=0.21.0",
+    "tensorboard>=2.21.0",
+    "onnx>=1.22.0",
+    "onnxruntime>=1.30.0",
     "optimum[onnxruntime]>=2.1.0",
 ]
 
@@ -43,9 +42,9 @@ dependencies = [
 unsloth = ["unsloth>=2026.5.2"]
 dev = [
     "black==26.5.1",
-    "isort==7.0.0",
+    "isort==9.0.1",
     "flake8==7.3.0",
-    "pytest>=9.0.3",
+    "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
 ]
 
@@ -56,7 +55,7 @@ Homepage = "https://github.com/vespaai-playground/vespaembed"
 vespaembed = "vespaembed.cli.vespaembed:main"
 
 [build-system]
-requires = ["setuptools>=80.10.1"]
+requires = ["setuptools>=84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -109,6 +108,6 @@ addopts = "-v --tb=short"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.3",
+    "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
 ]
